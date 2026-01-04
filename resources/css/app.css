@@ -1,0 +1,132 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    :root {
+        color-scheme: light;
+    }
+    .dark {
+        color-scheme: dark;
+    }
+}
+
+@layer components {
+    .card {
+        @apply rounded-lg border border-border-light bg-surface shadow-card dark:border-border-dark dark:bg-surface-dark;
+    }
+
+    .card-muted {
+        @apply rounded-lg border border-border-light bg-surface-muted shadow-sm dark:border-border-dark dark:bg-surface-dark-muted;
+    }
+
+    .btn {
+        @apply inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-medium transition;
+    }
+
+    .btn-primary {
+        @apply btn bg-accent-primary text-white hover:bg-accent-muted focus:outline-none focus:ring-2 focus:ring-accent-muted focus:ring-offset-2 dark:focus:ring-offset-surface-dark;
+    }
+
+    .btn-ghost {
+        @apply btn text-text-secondary hover:bg-surface-muted dark:hover:bg-surface-dark-muted;
+    }
+
+    .btn-secondary {
+        @apply btn bg-white border border-border-light text-text-primary hover:bg-surface-muted dark:bg-surface-dark dark:border-border-dark dark:text-text-inverted dark:hover:bg-surface-dark-muted;
+    }
+
+    .btn-danger {
+        @apply btn bg-red-600 text-white hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:bg-red-600 dark:hover:bg-red-700 dark:focus:ring-red-500;
+    }
+
+    .input {
+        @apply block w-full rounded-md border border-border-light bg-white px-3 py-2 text-sm text-text-primary shadow-sm focus:border-accent-primary focus:ring-accent-primary dark:border-border-dark dark:bg-surface-dark dark:text-text-inverted;
+    }
+}
+
+/* Custom Progress Bar Styles - Light/Dark Mode */
+/* Base nprogress styles (required when includeCSS: false) */
+#nprogress {
+    pointer-events: none;
+}
+
+#nprogress .bar {
+    background: #086fff;
+    position: fixed;
+    z-index: 1031;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+}
+
+#nprogress .peg {
+    display: block;
+    position: absolute;
+    right: 0px;
+    width: 100px;
+    height: 100%;
+    box-shadow: 0 0 10px #4b5563, 0 0 5px #4b5563;
+    opacity: 1;
+    transform: rotate(3deg) translate(0px, -4px);
+}
+
+#nprogress .spinner {
+    display: block;
+    position: fixed;
+    z-index: 1031;
+    top: 15px;
+    right: 15px;
+}
+
+#nprogress .spinner-icon {
+    width: 18px;
+    height: 18px;
+    box-sizing: border-box;
+    border: solid 2px transparent;
+    border-top-color: #086fff;
+    border-left-color: #086fff;
+    border-radius: 50%;
+    animation: nprogress-spinner 400ms linear infinite;
+}
+
+.nprogress-custom-parent {
+    overflow: hidden;
+    position: relative;
+}
+
+.nprogress-custom-parent #nprogress .spinner,
+.nprogress-custom-parent #nprogress .bar {
+    position: absolute;
+}
+
+@keyframes nprogress-spinner {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+/* Dark mode - gradient colors */
+.dark #nprogress .bar {
+    /* Gradient: Blue to Purple to Pink */
+    background: linear-gradient(
+        90deg,
+        #3b82f6 0%,
+        #8b5cf6 50%,
+        #ec4899 100%
+    ) !important;
+}
+
+.dark #nprogress .peg {
+    /* Gradient shadow for dark mode */
+    box-shadow: 0 0 10px #8b5cf6, 0 0 5px #ec4899 !important;
+}
+
+.dark #nprogress .spinner-icon {
+    border-top-color: #8b5cf6 !important;
+    border-left-color: #ec4899 !important;
+}
