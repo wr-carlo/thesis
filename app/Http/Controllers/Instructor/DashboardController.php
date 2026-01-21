@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Instructor;
 
 use App\Http\Controllers\Controller;
+use App\Models\Log;
 use App\Models\StudentSubject;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -33,8 +34,16 @@ class DashboardController extends Controller
                 ->count(),
         ];
 
+        // Fetch recent 5 logs for the current instructor
+        $logs = Log::where('user_id', auth()->id())
+            ->with('user')
+            ->latest()
+            ->take(5)
+            ->get();
+
         return Inertia::render('Instructor/Dashboard', [
             'stats' => $stats,
+            'logs' => $logs,
         ]);
     }
 }

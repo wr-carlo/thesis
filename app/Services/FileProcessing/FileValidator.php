@@ -106,70 +106,38 @@ class FileValidator
         $mimeType = mime_content_type($filePath);
 
         try {
-            // Check DOCX for images/shapes
-            if ($mimeType === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
-                $phpWord = WordIOFactory::load($filePath);
-                
-                foreach ($phpWord->getSections() as $section) {
-                    foreach ($section->getElements() as $element) {
-                        $elementClass = get_class($element);
-                        
-                        if (str_contains($elementClass, 'Image')) {
+            // Use extractor methods for validation (DRY principle)
+            // This ensures consistent validation logic across the application
+            // Use factory to get appropriate extractor based on MIME type
+            
+            if (!in_array($mimeType, $this->allowedMimeTypes)) {
                             return [
                                 'valid' => false,
-                                'error' => 'File contains images. Please remove all images before uploading.',
+                    'error' => 'Unsupported file type for media validation.',
                             ];
                         }
                         
-                        if (str_contains($elementClass, 'Shape')) {
-                            return [
-                                'valid' => false,
-                                'error' => 'File contains shapes. Please remove all shapes before uploading.',
-                            ];
-                        }
-                    }
-                }
-            }
-
-            // Check PPTX for images/shapes
-            if ($mimeType === 'application/vnd.openxmlformats-officedocument.presentationml.presentation') {
-                $phpPresentation = PresentationIOFactory::load($filePath);
+            // Get appropriate extractor using factory
+            $extractor = FileExtractorFactory::make($mimeType);
+            $isValid = $extractor->validateNoMedia($filePath);
+            
+            if (!$isValid) {
+                // Provide specific error messages based on file type
+                $errorMessages = [
+                    'application/vnd.openxmlformats-officedocument.wordprocessingml.document' => 
+                        'File contains images or shapes. Please remove all images and shapes before uploading.',
+                    'application/vnd.openxmlformats-officedocument.presentationml.presentation' => 
+                        'Presentation contains images, videos, or other media. Please remove all media content before uploading.',
+                    'application/pdf' => 
+                        'PDF contains images. Please remove all images before uploading.',
+                    'text/plain' => 
+                        'Text file validation failed.',
+                ];
                 
-                foreach ($phpPresentation->getAllSlides() as $slide) {
-                    foreach ($slide->getShapeCollection() as $shape) {
-                        $shapeClass = get_class($shape);
-                        
-                        if (str_contains($shapeClass, 'Drawing')) {
-                            return [
-                                'valid' => false,
-                                'error' => 'Presentation contains images. Please remove all images before uploading.',
-                            ];
-                        }
-                    }
-                }
-            }
-
-            // PDF media detection - check for actual image objects
-            if ($mimeType === 'application/pdf') {
-                $content = file_get_contents($filePath);
-                
-                // Only flag as having images if we find actual image stream objects
-                // Pattern 1: Look for /Subtype/Image that's part of an object definition (has numbers before it)
-                // This avoids false positives from text content containing the word "Image"
-                if (preg_match('/\d+\s+\d+\s+obj[\s\S]{0,500}\/Subtype\s*\/Image[^a-zA-Z]/i', $content)) {
                     return [
                         'valid' => false,
-                        'error' => 'PDF contains images. Please remove all images before uploading.',
+                    'error' => $errorMessages[$mimeType] ?? 'File contains media content. Please remove all media before uploading.',
                     ];
-                }
-                
-                // Pattern 2: /Type/XObject followed by /Subtype/Image (image XObject)
-                if (preg_match('/\/Type\s*\/XObject[\s\S]{0,200}\/Subtype\s*\/Image[^a-zA-Z]/i', $content)) {
-                    return [
-                        'valid' => false,
-                        'error' => 'PDF contains images. Please remove all images before uploading.',
-                    ];
-                }
             }
 
             return ['valid' => true];

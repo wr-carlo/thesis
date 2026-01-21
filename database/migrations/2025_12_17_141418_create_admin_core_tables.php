@@ -117,7 +117,7 @@ return new class extends Migration
             $table->foreignId('assessment_item_id')->constrained('assessment_items')->cascadeOnDelete();
             $table->string('type');
             $table->json('choices')->nullable();
-            $table->string('correct_answer')->nullable();
+            $table->boolean('correct_answer');
             $table->timestamps();
         });
 

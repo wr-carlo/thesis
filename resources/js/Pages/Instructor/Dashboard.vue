@@ -1,9 +1,11 @@
 <script setup>
 import InstructorLayout from "@/Layouts/InstructorLayout.vue";
+import RecentActivityCard from "@/Components/RecentActivityCard.vue";
 import { Head, Link } from "@inertiajs/vue3";
 
 const props = defineProps({
     stats: Object,
+    logs: Array,
 });
 </script>
 
@@ -152,6 +154,59 @@ const props = defineProps({
             <!-- (Removed Total Attempts card tied to assessments) -->
         </div>
 
-        <!-- (Removed Recent Activity sections tied to lessons/assessments) -->
+        <!-- Recent Activity Section -->
+        <div class="card p-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h2
+                        class="text-lg font-semibold text-text-primary dark:text-text-inverted"
+                    >
+                        Recent Activity
+                    </h2>
+                    <p class="text-sm text-text-secondary mt-1">
+                        Your latest actions and updates
+                    </p>
+                </div>
+                <span class="text-xs text-text-secondary">
+                    Latest {{ logs?.length || 0 }} entries
+                </span>
+            </div>
+
+            <!-- Empty State -->
+            <div
+                v-if="!logs || logs.length === 0"
+                class="text-center py-12 text-text-secondary"
+            >
+                <svg
+                    class="w-16 h-16 mx-auto mb-4 opacity-50"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                    />
+                </svg>
+                <p class="text-sm font-medium text-text-primary dark:text-text-inverted mb-1">
+                    No recent activity
+                </p>
+                <p class="text-xs">
+                    Your activities will appear here once you start creating
+                    assessments or managing students.
+                </p>
+            </div>
+
+            <!-- Activity Cards -->
+            <div v-else class="space-y-3">
+                <RecentActivityCard
+                    v-for="log in logs"
+                    :key="log.id"
+                    :log="log"
+                />
+            </div>
+        </div>
     </InstructorLayout>
 </template>

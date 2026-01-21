@@ -1,11 +1,16 @@
 <template>
     <InstructorLayout>
+        <Head title="Create Assessment" />
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg">
+                <div
+                    class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg"
+                >
                     <div class="p-6">
                         <div class="flex justify-between items-center mb-6">
-                            <h2 class="text-2xl font-semibold text-gray-900 dark:text-white">
+                            <h2
+                                class="text-2xl font-semibold text-gray-900 dark:text-white"
+                            >
                                 Upload New Lesson
                             </h2>
                             <Link
@@ -35,7 +40,10 @@
                                         {{ subject.name }} ({{ subject.code }})
                                     </option>
                                 </select>
-                                <InputError class="mt-2" :message="form.errors.subject_id" />
+                                <InputError
+                                    class="mt-2"
+                                    :message="form.errors.subject_id"
+                                />
                             </div>
 
                             <!-- Lesson Title -->
@@ -49,7 +57,10 @@
                                     required
                                     placeholder="Enter lesson title"
                                 />
-                                <InputError class="mt-2" :message="form.errors.title" />
+                                <InputError
+                                    class="mt-2"
+                                    :message="form.errors.title"
+                                />
                             </div>
 
                             <!-- File Upload -->
@@ -60,7 +71,10 @@
                                     @dragover.prevent="isDragging = true"
                                     @dragleave.prevent="isDragging = false"
                                     @drop.prevent="handleDrop"
-                                    :class="{ 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20': isDragging }"
+                                    :class="{
+                                        'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20':
+                                            isDragging,
+                                    }"
                                 >
                                     <div class="space-y-1 text-center">
                                         <svg
@@ -76,7 +90,9 @@
                                                 stroke-linejoin="round"
                                             />
                                         </svg>
-                                        <div class="flex text-sm text-gray-600 dark:text-gray-400">
+                                        <div
+                                            class="flex text-sm text-gray-600 dark:text-gray-400"
+                                        >
                                             <label
                                                 for="file"
                                                 class="relative cursor-pointer bg-white dark:bg-gray-800 rounded-md font-medium text-indigo-600 hover:text-indigo-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
@@ -93,70 +109,118 @@
                                             </label>
                                             <p class="pl-1">or drag and drop</p>
                                         </div>
-                                        <p class="text-xs text-gray-500 dark:text-gray-400">
+                                        <p
+                                            class="text-xs text-gray-500 dark:text-gray-400"
+                                        >
                                             DOCX, PDF, PPTX, TXT up to 10MB
                                         </p>
-                                        <p v-if="fileName" class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-2">
+                                        <p
+                                            v-if="fileName"
+                                            class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-2"
+                                        >
                                             Selected: {{ fileName }}
                                         </p>
                                     </div>
                                 </div>
-                                <InputError class="mt-2" :message="form.errors.file" />
+                                <InputError
+                                    class="mt-2"
+                                    :message="form.errors.file"
+                                />
                             </div>
 
                             <!-- Question Configuration -->
-                            <div class="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg">
-                                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">
+                            <div
+                                class="bg-gray-50 dark:bg-gray-900 p-4 rounded-lg"
+                            >
+                                <h3
+                                    class="text-lg font-medium text-gray-900 dark:text-white mb-4"
+                                >
                                     Assessment Configuration
                                 </h3>
 
-                                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div
+                                    class="grid grid-cols-1 md:grid-cols-3 gap-4"
+                                >
                                     <!-- Multiple Choice Count -->
                                     <div>
-                                        <InputLabel for="multiple_choice_count" value="Multiple Choice Questions" />
+                                        <InputLabel
+                                            for="multiple_choice_count"
+                                            value="Multiple Choice Questions"
+                                        />
                                         <TextInput
                                             id="multiple_choice_count"
-                                            v-model.number="form.multiple_choice_count"
+                                            v-model.number="
+                                                form.multiple_choice_count
+                                            "
                                             type="number"
                                             min="0"
                                             class="mt-1 block w-full"
                                             required
                                         />
-                                        <InputError class="mt-2" :message="form.errors.multiple_choice_count" />
+                                        <InputError
+                                            class="mt-2"
+                                            :message="
+                                                form.errors
+                                                    .multiple_choice_count
+                                            "
+                                        />
                                     </div>
 
                                     <!-- Identification Count -->
                                     <div>
-                                        <InputLabel for="identification_count" value="Identification Questions" />
+                                        <InputLabel
+                                            for="identification_count"
+                                            value="Identification Questions"
+                                        />
                                         <TextInput
                                             id="identification_count"
-                                            v-model.number="form.identification_count"
+                                            v-model.number="
+                                                form.identification_count
+                                            "
                                             type="number"
                                             min="0"
                                             class="mt-1 block w-full"
                                             required
                                         />
-                                        <InputError class="mt-2" :message="form.errors.identification_count" />
+                                        <InputError
+                                            class="mt-2"
+                                            :message="
+                                                form.errors.identification_count
+                                            "
+                                        />
                                     </div>
 
                                     <!-- True/False Count -->
                                     <div>
-                                        <InputLabel for="true_or_false_count" value="True/False Questions" />
+                                        <InputLabel
+                                            for="true_or_false_count"
+                                            value="True/False Questions"
+                                        />
                                         <TextInput
                                             id="true_or_false_count"
-                                            v-model.number="form.true_or_false_count"
+                                            v-model.number="
+                                                form.true_or_false_count
+                                            "
                                             type="number"
                                             min="0"
                                             class="mt-1 block w-full"
                                             required
                                         />
-                                        <InputError class="mt-2" :message="form.errors.true_or_false_count" />
+                                        <InputError
+                                            class="mt-2"
+                                            :message="
+                                                form.errors.true_or_false_count
+                                            "
+                                        />
                                     </div>
                                 </div>
 
                                 <!-- Difficulty Level -->
                                 <div class="mt-4">
-                                    <InputLabel for="difficulty" value="Difficulty Level" />
+                                    <InputLabel
+                                        for="difficulty"
+                                        value="Difficulty Level"
+                                    />
                                     <select
                                         id="difficulty"
                                         v-model="form.difficulty"
@@ -167,7 +231,10 @@
                                         <option value="medium">Medium</option>
                                         <option value="hard">Hard</option>
                                     </select>
-                                    <InputError class="mt-2" :message="form.errors.difficulty" />
+                                    <InputError
+                                        class="mt-2"
+                                        :message="form.errors.difficulty"
+                                    />
                                 </div>
                             </div>
 
@@ -178,7 +245,9 @@
                                     :disabled="form.processing"
                                     class="ml-4"
                                 >
-                                    <span v-if="form.processing">Processing...</span>
+                                    <span v-if="form.processing"
+                                        >Processing...</span
+                                    >
                                     <span v-else>Generate Assessment</span>
                                 </PrimaryButton>
                             </div>
@@ -194,6 +263,7 @@
             :progress="uploadProgress"
             :stage="currentStage"
             :error="uploadError"
+            @close="handleClose"
             @cancel="cancelUpload"
             @retry="retryUpload"
         />
@@ -201,35 +271,35 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { useForm, Link } from '@inertiajs/vue3';
-import InstructorLayout from '@/Layouts/InstructorLayout.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import TextInput from '@/Components/TextInput.vue';
-import InputError from '@/Components/InputError.vue';
-import PrimaryButton from '@/Components/PrimaryButton.vue';
-import ProcessingModal from '@/Components/ProcessingModal.vue';
-
+import { ref } from "vue";
+import { useForm, Link } from "@inertiajs/vue3";
+import InstructorLayout from "@/Layouts/InstructorLayout.vue";
+import InputLabel from "@/Components/InputLabel.vue";
+import TextInput from "@/Components/TextInput.vue";
+import InputError from "@/Components/InputError.vue";
+import PrimaryButton from "@/Components/PrimaryButton.vue";
+import ProcessingModal from "@/Components/ProcessingModal.vue";
+import { Head } from "@inertiajs/vue3";
 const props = defineProps({
     subjects: Array,
 });
 
 const form = useForm({
-    subject_id: '',
-    title: '',
+    subject_id: "",
+    title: "",
     file: null,
     multiple_choice_count: 5,
     identification_count: 3,
     true_or_false_count: 2,
-    difficulty: 'medium',
+    difficulty: "medium",
 });
 
-const fileName = ref('');
+const fileName = ref("");
 const isDragging = ref(false);
 const showProcessingModal = ref(false);
 const uploadProgress = ref(0);
-const currentStage = ref('');
-const uploadError = ref('');
+const currentStage = ref("");
+const uploadError = ref("");
 
 const handleFileSelect = (event) => {
     const file = event.target.files[0];
@@ -251,14 +321,15 @@ const handleDrop = (event) => {
 const submitForm = () => {
     showProcessingModal.value = true;
     uploadProgress.value = 10;
-    currentStage.value = 'Uploading file...';
+    currentStage.value = "Uploading file...";
 
-    form.post(route('instructor.lessons.store'), {
+    form.post(route("instructor.lessons.store"), {
         onSuccess: () => {
             showProcessingModal.value = false;
         },
         onError: (errors) => {
-            uploadError.value = errors.error || 'An error occurred during upload';
+            uploadError.value =
+                errors.error || "An error occurred during upload";
             uploadProgress.value = 0;
         },
         onProgress: (progress) => {
@@ -267,15 +338,28 @@ const submitForm = () => {
     });
 };
 
+const handleClose = () => {
+    showProcessingModal.value = false;
+    // Only reset form if not processing and no error
+    // This allows user to close modal without losing form data during processing
+    if (!uploadProgress.value || uploadError.value) {
+        uploadError.value = "";
+    }
+};
+
 const cancelUpload = () => {
     showProcessingModal.value = false;
     form.reset();
-    fileName.value = '';
+    fileName.value = "";
+    uploadError.value = "";
+    uploadProgress.value = 0;
+    currentStage.value = "";
 };
 
 const retryUpload = () => {
-    uploadError.value = '';
+    uploadError.value = "";
+    uploadProgress.value = 0;
+    currentStage.value = "";
     submitForm();
 };
 </script>
-

@@ -2,6 +2,7 @@
 import { Link, usePage } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
+import NotificationDropdown from "@/Components/NotificationDropdown.vue";
 import Toast from "@/Components/Toast.vue";
 import { toggleTheme, useTheme } from "@/Stores/useTheme";
 
@@ -10,7 +11,11 @@ const flash = computed(() => page.props.flash || {});
 const theme = useTheme();
 const sidebarOpen = ref(false);
 
-const navItems = [{ name: "Dashboard", route: "student.dashboard" }];
+const navItems = [
+    { name: "Dashboard", route: "student.dashboard" },
+    { name: "Join Subjects", route: "student.subjects.index" },
+    { name: "Assessments", route: "student.assessments.index" },
+];
 
 const isActive = (routeName) => {
     return route().current(routeName);
@@ -141,39 +146,42 @@ const isActive = (routeName) => {
                                 {{ $page.props.auth.user.role }}
                             </div>
                         </div>
-                        <button
-                            @click="toggleTheme"
-                            class="p-2 rounded-lg hover:bg-surface-muted dark:hover:bg-surface-dark-muted"
-                        >
-                            <svg
-                                v-if="theme.current === 'light'"
-                                class="w-5 h-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
+                        <div class="flex items-center gap-2">
+                            <NotificationDropdown role="student" />
+                            <button
+                                @click="toggleTheme"
+                                class="p-2 rounded-lg hover:bg-surface-muted dark:hover:bg-surface-dark-muted"
                             >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-                                />
-                            </svg>
-                            <svg
-                                v-else
-                                class="w-5 h-5"
-                                fill="none"
-                                stroke="currentColor"
-                                viewBox="0 0 24 24"
-                            >
-                                <path
-                                    stroke-linecap="round"
-                                    stroke-linejoin="round"
-                                    stroke-width="2"
-                                    d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-                                />
-                            </svg>
-                        </button>
+                                <svg
+                                    v-if="theme.current === 'light'"
+                                    class="w-5 h-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                                    />
+                                </svg>
+                                <svg
+                                    v-else
+                                    class="w-5 h-5"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                        stroke-width="2"
+                                        d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                                    />
+                                </svg>
+                            </button>
+                        </div>
                     </div>
                     <Link
                         :href="route('logout')"

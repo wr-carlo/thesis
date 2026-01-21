@@ -31,10 +31,4 @@ class Lesson extends Model
     {
         return $this->hasMany(Assessment::class);
     }
-
-    public function processingLogs()
-    {
-        return $this->hasMany(LessonProcessingLog::class);
-    }
 }
-

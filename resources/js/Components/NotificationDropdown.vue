@@ -1,21 +1,46 @@
 <script setup>
-import { onMounted, onUnmounted, ref } from "vue";
+import { computed, onMounted, onUnmounted, ref } from "vue";
+import { usePage } from "@inertiajs/vue3";
 import axios from "axios";
 
+const props = defineProps({
+    role: {
+        type: String,
+        required: true,
+        validator: (value) => ["student", "instructor"].includes(value),
+    },
+});
+
+const page = usePage();
 const isOpen = ref(false);
 const notifications = ref([]);
 const unreadCount = ref(0);
 const isLoading = ref(false);
+const isInitialLoad = ref(true);
 const pollInterval = ref(null);
+const echoChannel = ref(null);
+const useRealTime = ref(false);
 
-const fetchNotifications = async () => {
+// Dynamic route names based on role
+const routePrefix = computed(() => {
+    return props.role === "student" ? "student" : "instructor";
+});
+
+// Get current user ID
+const userId = computed(() => page.props.auth?.user?.id);
+
+const fetchNotifications = async (showLoading = true) => {
     try {
-        isLoading.value = true;
+        // Only show loading on initial load or when explicitly requested
+        if (showLoading && isInitialLoad.value) {
+            isLoading.value = true;
+        }
         const response = await axios.get(
-            route("instructor.notifications.unread")
+            route(`${routePrefix.value}.notifications.unread`)
         );
         notifications.value = response.data.notifications;
         unreadCount.value = response.data.unreadCount;
+        isInitialLoad.value = false;
     } catch (error) {
         console.error("Failed to fetch notifications:", error);
     } finally {
@@ -23,10 +48,22 @@ const fetchNotifications = async () => {
     }
 };
 
+// Add new notification from real-time event
+const addNotification = (notificationData) => {
+    // Check if notification already exists
+    const exists = notifications.value.some(
+        (n) => n.id === notificationData.id
+    );
+    if (!exists) {
+        notifications.value.unshift(notificationData);
+        unreadCount.value += 1;
+    }
+};
+
 const markAsRead = async (notificationId) => {
     try {
         await axios.post(
-            route("instructor.notifications.read", notificationId)
+            route(`${routePrefix.value}.notifications.read`, notificationId)
         );
         // Update local state
         const notification = notifications.value.find(
@@ -43,7 +80,7 @@ const markAsRead = async (notificationId) => {
 
 const markAllAsRead = async () => {
     try {
-        await axios.post(route("instructor.notifications.read-all"));
+        await axios.post(route(`${routePrefix.value}.notifications.read-all`));
         notifications.value.forEach((n) => {
             n.read_at = new Date().toISOString();
         });
@@ -62,17 +99,49 @@ const handleNotificationClick = (notification) => {
 };
 
 onMounted(() => {
-    fetchNotifications();
+    // Initial fetch with loading indicator
+    fetchNotifications(true);
 
-    // Poll every 30 seconds
-    pollInterval.value = setInterval(() => {
-        fetchNotifications();
-    }, 30000);
+    // Setup real-time notifications if Echo is available
+    if (window.Echo && userId.value) {
+        try {
+            useRealTime.value = true;
+            // Subscribe to user's private channel
+            echoChannel.value = window.Echo.private(`user.${userId.value}`);
+
+            // Listen for notification.created event
+            echoChannel.value.listen(".notification.created", (data) => {
+                if (data.notification) {
+                    addNotification(data.notification);
+                }
+            });
+
+            console.log("Real-time notifications enabled");
+        } catch (error) {
+            console.error("Failed to setup real-time notifications:", error);
+            useRealTime.value = false;
+        }
+    }
+
+    // Fallback to polling if real-time is not available
+    if (!useRealTime.value) {
+        // Poll every 5 seconds as fallback (silent updates, no loading indicator)
+        pollInterval.value = setInterval(() => {
+            fetchNotifications(false);
+        }, 5000);
+    }
 });
 
 onUnmounted(() => {
+    // Cleanup polling
     if (pollInterval.value) {
         clearInterval(pollInterval.value);
+    }
+
+    // Cleanup Echo channel
+    if (echoChannel.value) {
+        window.Echo.leave(`user.${userId.value}`);
+        echoChannel.value = null;
     }
 });
 </script>
@@ -148,13 +217,33 @@ onUnmounted(() => {
 
                 <!-- Notifications List -->
                 <div class="overflow-y-auto flex-1">
+                    <!-- Skeleton Loaders -->
                     <div
-                        v-if="isLoading"
-                        class="p-4 text-center text-text-secondary"
+                        v-if="isLoading && notifications.length === 0"
+                        class="p-4 space-y-3"
                     >
-                        Loading...
+                        <div
+                            v-for="i in 3"
+                            :key="i"
+                            class="animate-pulse space-y-2"
+                        >
+                            <div class="flex items-start gap-3">
+                                <div
+                                    class="mt-1.5 h-2 w-2 rounded-full bg-gray-300 dark:bg-gray-600 flex-shrink-0"
+                                ></div>
+                                <div class="flex-1 space-y-2">
+                                    <div
+                                        class="h-4 bg-gray-200 dark:bg-gray-700 rounded w-full"
+                                    ></div>
+                                    <div
+                                        class="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3"
+                                    ></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
+                    <!-- Empty State -->
                     <div
                         v-else-if="notifications.length === 0"
                         class="p-8 text-center text-text-secondary"

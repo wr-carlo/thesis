@@ -31,5 +31,21 @@ class AssessmentAttempt extends Model
     {
         return $this->hasMany(StudentAnswer::class, 'attempt_id');
     }
+
+    /**
+     * Get the next attempt number for a student and assessment.
+     *
+     * @param int $studentId
+     * @param int $assessmentId
+     * @return int
+     */
+    public static function getNextAttemptNumber(int $studentId, int $assessmentId): int
+    {
+        $maxAttempt = self::where('student_id', $studentId)
+            ->where('assessment_id', $assessmentId)
+            ->max('attempt_no');
+
+        return $maxAttempt ? $maxAttempt + 1 : 1;
+    }
 }
 

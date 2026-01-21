@@ -13,7 +13,7 @@ class ProfileController extends Controller
     public function edit()
     {
         $user = auth()->user()->load('student.section.department');
-        
+
         return Inertia::render('Student/Settings', [
             'user' => $user,
         ]);
@@ -50,4 +50,3 @@ class ProfileController extends Controller
         ]);
     }
 }
-

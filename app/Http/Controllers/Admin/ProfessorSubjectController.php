@@ -15,7 +15,7 @@ class ProfessorSubjectController extends Controller
 {
     public function index()
     {
-        $assignments = ProfessorSubject::with(['professor.user', 'subject'])
+        $assignments = ProfessorSubject::with(['professor.user', 'professor.department', 'subject'])
             ->orderByDesc('id')
             ->paginate(7);
 
@@ -40,6 +40,20 @@ class ProfessorSubjectController extends Controller
         $this->logAction($request->user(), "Assigned professor {$assignment->professor_id} to subject {$assignment->subject_id}");
 
         return redirect()->back()->with('success', 'Assignment saved.');
+    }
+
+    public function update(ProfessorSubjectRequest $request, ProfessorSubject $assignment)
+    {
+        $data = $request->validated();
+
+        $assignment->update([
+            'professor_id' => $data['professor_id'],
+            'subject_id' => $data['subject_id'],
+        ]);
+
+        $this->logAction($request->user(), "Updated assignment: Instructor {$assignment->professor_id} / subject {$assignment->subject_id}");
+
+        return redirect()->back()->with('success', 'Assignment updated successfully.');
     }
 
     public function destroy(Request $request, ProfessorSubject $assignment)

@@ -2,6 +2,7 @@
 import { Link, usePage } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
+import NotificationDropdown from "@/Components/NotificationDropdown.vue";
 import Toast from "@/Components/Toast.vue";
 import { toggleTheme, useTheme } from "@/Stores/useTheme";
 
@@ -148,6 +149,7 @@ const isActive = (routeName) => {
                             </div>
                         </div>
                         <div class="flex items-center gap-2">
+                            <NotificationDropdown role="instructor" />
                             <button
                                 @click="toggleTheme"
                                 class="p-2 rounded-lg hover:bg-surface-muted dark:hover:bg-surface-dark-muted"

@@ -1,6 +1,6 @@
 <template>
     <InstructorLayout>
-        <Head title="Edit Assessment" />
+        <Head title="Review Assessment" />
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <div
@@ -13,7 +13,7 @@
                                 <h2
                                     class="text-2xl font-semibold text-gray-900 dark:text-white"
                                 >
-                                    Edit Assessment
+                                    Review Assessment Questions
                                 </h2>
                                 <p
                                     class="text-sm text-gray-600 dark:text-gray-400 mt-1"
@@ -21,13 +21,20 @@
                                     {{ lesson.title }} -
                                     {{ lesson.subject?.name }}
                                 </p>
+                                <p
+                                    class="text-xs text-yellow-600 dark:text-yellow-400 mt-2 font-medium"
+                                >
+                                    ⚠️ Please review the questions below before
+                                    saving. You can edit them or cancel to start
+                                    over.
+                                </p>
                             </div>
                             <div class="flex space-x-3">
                                 <Link
-                                    :href="route('instructor.lessons.index')"
+                                    :href="route('instructor.lessons.create')"
                                     class="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition ease-in-out duration-150"
                                 >
-                                    Back
+                                    Back to Create
                                 </Link>
                             </div>
                         </div>
@@ -91,48 +98,6 @@
                                 >
                                     {{ questionCounts.total }}
                                 </span>
-                            </div>
-                        </div>
-
-                        <!-- Assessment Status -->
-                        <div v-if="assessment" class="mb-6">
-                            <div
-                                class="flex items-center justify-between bg-gray-50 dark:bg-gray-900 p-4 rounded-lg"
-                            >
-                                <div>
-                                    <span
-                                        class="text-sm text-gray-600 dark:text-gray-400"
-                                        >Status:</span
-                                    >
-                                    <span
-                                        :class="{
-                                            'ml-2 px-3 py-1 inline-flex text-sm leading-5 font-semibold rounded-full': true,
-                                            'bg-yellow-100 text-yellow-800':
-                                                assessment.status === 'draft',
-                                            'bg-green-100 text-green-800':
-                                                assessment.status ===
-                                                'published',
-                                        }"
-                                    >
-                                        {{ assessment.status }}
-                                    </span>
-                                </div>
-                                <div class="flex space-x-2">
-                                    <button
-                                        v-if="assessment.status === 'published'"
-                                        @click="unpublishAssessment"
-                                        class="inline-flex items-center px-4 py-2 bg-yellow-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition ease-in-out duration-150"
-                                    >
-                                        Set to Draft
-                                    </button>
-                                    <button
-                                        v-if="assessment.status === 'draft'"
-                                        @click="publishAssessment"
-                                        class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150"
-                                    >
-                                        Publish
-                                    </button>
-                                </div>
                             </div>
                         </div>
 
@@ -303,7 +268,9 @@
                                         />
                                         <button
                                             v-if="
-                                                newQuestion.choices.length > 4
+                                                newQuestion.choices.filter(
+                                                    (c) => c.trim() !== ''
+                                                ).length > 4
                                             "
                                             @click="removeChoice(choiceIndex)"
                                             type="button"
@@ -497,38 +464,13 @@
                                             choice, choiceIndex
                                         ) in item.choices"
                                         :key="choiceIndex"
-                                        class="flex items-center gap-2 mb-2"
+                                        class="flex mb-2"
                                     >
                                         <input
                                             v-model="item.choices[choiceIndex]"
                                             type="text"
                                             class="flex-1 border-gray-300 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
                                         />
-                                        <button
-                                            v-if="item.choices.length > 4"
-                                            @click="
-                                                removeChoiceFromItem(
-                                                    index,
-                                                    choiceIndex
-                                                )
-                                            "
-                                            type="button"
-                                            class="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                                        >
-                                            <svg
-                                                class="w-5 h-5"
-                                                fill="none"
-                                                stroke="currentColor"
-                                                viewBox="0 0 24 24"
-                                            >
-                                                <path
-                                                    stroke-linecap="round"
-                                                    stroke-linejoin="round"
-                                                    stroke-width="2"
-                                                    d="M6 18L18 6M6 6l12 12"
-                                                />
-                                            </svg>
-                                        </button>
                                     </div>
                                 </div>
 
@@ -581,21 +523,33 @@
                             </div>
                         </div>
 
-                        <!-- Save Button -->
-                        <div class="mt-6 flex justify-end">
+                        <!-- Empty State -->
+                        <div v-else-if="!showAddForm" class="text-center py-12">
+                            <p class="text-gray-500 dark:text-gray-400 mb-4">
+                                No questions yet. Click "Add Question" to create
+                                one.
+                            </p>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="mt-6 flex justify-end space-x-3">
                             <button
-                                @click="saveChanges"
-                                :disabled="saving || items.length === 0"
-                                :class="{
-                                    'opacity-50 cursor-not-allowed':
-                                        saving || items.length === 0,
-                                    'opacity-100 cursor-pointer':
-                                        !saving && items.length > 0,
-                                }"
+                                @click="cancelReview"
+                                :disabled="saving || cancelling"
+                                class="inline-flex items-center px-4 py-2 bg-gray-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50"
+                            >
+                                <span v-if="cancelling">Cancelling...</span>
+                                <span v-else>Cancel</span>
+                            </button>
+                            <button
+                                @click="saveAssessment"
+                                :disabled="
+                                    saving || cancelling || items.length === 0
+                                "
                                 class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-50"
                             >
                                 <span v-if="saving">Saving...</span>
-                                <span v-else>Save Changes</span>
+                                <span v-else>Save Assessment</span>
                             </button>
                         </div>
                     </div>
@@ -615,16 +569,15 @@ import { Head } from "@inertiajs/vue3";
 
 const props = defineProps({
     lesson: Object,
+    items: Array,
     departments: Array,
     sections: Array,
     selectedSectionIds: Array,
 });
 
-const assessment = ref(props.lesson.assessments?.[0] || null);
-
 // Ensure items have proper structure, especially choices as arrays
 const items = ref(
-    (assessment.value?.items || []).map((item) => {
+    (props.items || []).map((item) => {
         if (item.type === "multiple_choice") {
             // Ensure choices is always an array
             if (!item.choices || !Array.isArray(item.choices)) {
@@ -643,7 +596,24 @@ const items = ref(
         return item;
     })
 );
+
+// Question type counts
+const questionCounts = computed(() => {
+    return {
+        multiple_choice: items.value.filter(
+            (item) => item.type === "multiple_choice"
+        ).length,
+        identification: items.value.filter(
+            (item) => item.type === "identification"
+        ).length,
+        true_or_false: items.value.filter(
+            (item) => item.type === "true_or_false"
+        ).length,
+        total: items.value.length,
+    };
+});
 const saving = ref(false);
+const cancelling = ref(false);
 const selectedSectionIds = ref([...(props.selectedSectionIds || [])]);
 
 // Add Question Form State
@@ -740,24 +710,16 @@ const deleteItem = (index) => {
     }
 };
 
-const removeChoiceFromItem = (itemIndex, choiceIndex) => {
-    const item = items.value[itemIndex];
-    if (item && item.type === "multiple_choice" && item.choices.length > 4) {
-        // Store the choice being removed before removing it
-        const removedChoice = item.choices[choiceIndex];
-        item.choices.splice(choiceIndex, 1);
-        // Reset correct answer if it was the removed choice
-        if (item.correct_answer === removedChoice) {
-            item.correct_answer = "";
-        }
+const saveAssessment = () => {
+    if (items.value.length === 0) {
+        alert("Please add at least one question before saving.");
+        return;
     }
-};
 
-const saveChanges = () => {
     saving.value = true;
 
-    router.put(
-        route("instructor.lessons.update", props.lesson.id),
+    router.post(
+        route("instructor.lessons.review.save"),
         {
             items: items.value,
             section_ids: selectedSectionIds.value,
@@ -773,25 +735,26 @@ const saveChanges = () => {
     );
 };
 
-const publishAssessment = () => {
-    router.post(
-        route("instructor.lessons.publish", props.lesson.id),
-        {},
-        {
-            onSuccess: () => {
-                assessment.value.status = "published";
-            },
-        }
-    );
-};
+const cancelReview = () => {
+    if (
+        !confirm(
+            "Are you sure you want to cancel? All uploaded data will be discarded."
+        )
+    ) {
+        return;
+    }
 
-const unpublishAssessment = () => {
+    cancelling.value = true;
+
     router.post(
-        route("instructor.lessons.unpublish", props.lesson.id),
+        route("instructor.lessons.review.cancel"),
         {},
         {
             onSuccess: () => {
-                assessment.value.status = "draft";
+                cancelling.value = false;
+            },
+            onError: () => {
+                cancelling.value = false;
             },
         }
     );
@@ -834,8 +797,11 @@ const addChoice = () => {
 };
 
 const removeChoice = (index) => {
-    // Allow removal only if there are more than 4 choices
-    if (newQuestion.value.choices.length > 4) {
+    const filledChoices = newQuestion.value.choices.filter(
+        (c) => c.trim() !== ""
+    );
+    // Allow removal only if there will be at least 4 filled choices remaining
+    if (filledChoices.length > 4) {
         // Store the choice being removed before removing it
         const removedChoice = newQuestion.value.choices[index];
         newQuestion.value.choices.splice(index, 1);
@@ -900,20 +866,4 @@ const cancelAddQuestion = () => {
     resetForm();
     showAddForm.value = false;
 };
-
-// Question type counts
-const questionCounts = computed(() => {
-    return {
-        multiple_choice: items.value.filter(
-            (item) => item.type === "multiple_choice"
-        ).length,
-        identification: items.value.filter(
-            (item) => item.type === "identification"
-        ).length,
-        true_or_false: items.value.filter(
-            (item) => item.type === "true_or_false"
-        ).length,
-        total: items.value.length,
-    };
-});
 </script>

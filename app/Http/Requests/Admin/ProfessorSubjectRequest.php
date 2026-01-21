@@ -13,6 +13,8 @@ class ProfessorSubjectRequest extends FormRequest
 
     public function rules(): array
     {
+        $assignmentId = $this->route('assignment')?->id;
+
         return [
             'professor_id' => ['required', 'exists:professors,id'],
             'subject_id' => ['required', 'exists:subjects,id'],
