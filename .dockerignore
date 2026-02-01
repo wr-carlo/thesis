@@ -1,0 +1,63 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE & Editors
+.idea
+.vscode
+.fleet
+*.swp
+*.swo
+.editorconfig
+
+# Dependencies (will be installed in container)
+/node_modules
+/vendor
+
+# Build artifacts (will be built in container)
+/public/build
+/public/hot
+/public/storage
+
+# Environment files (should use container env vars)
+.env
+.env.*
+!.env.example
+
+# Testing
+/tests
+phpunit.xml
+.phpunit.cache
+.phpunit.result.cache
+/coverage
+
+# Documentation
+README.md
+CHANGELOG.md
+LICENSE
+/docs
+
+# Development files
+Homestead.json
+Homestead.yaml
+docker-compose*.yml
+Vagrantfile
+
+# Logs & Cache
+/storage/logs/*
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+!/storage/logs/.gitignore
+!/storage/framework/cache/.gitignore
+!/storage/framework/sessions/.gitignore
+!/storage/framework/views/.gitignore
+
+# Misc
+npm-debug.log
+yarn-error.log
+auth.json
+.DS_Store
+Thumbs.db
+Modify
