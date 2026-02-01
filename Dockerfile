@@ -19,7 +19,8 @@
     
     WORKDIR /app
     COPY . .
-    # copy built assets from node stage (Vite outputs to public/build by default)
+    
+    # copy built Vite assets
     COPY --from=nodebuild /app/public/build /app/public/build
     
     RUN composer install --no-dev --optimize-autoloader
@@ -28,7 +29,7 @@
         && chmod -R 777 storage bootstrap/cache
     
     EXPOSE 8080
-    CMD php artisan migrate --force || true && php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
-
-
+    
+    # keep CMD simple; Railway Start Command will handle migrate/wait
+    CMD php artisan serve --host=0.0.0.0 --port=${PORT:-8080}
     
