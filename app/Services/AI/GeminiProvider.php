@@ -10,24 +10,24 @@ class GeminiProvider implements AIServiceInterface
     protected string $model;
     protected int $timeout;
 
-    public function __construct()
+    public function __construct(array $config)
     {
-        $this->apiKey = config('ai_models.providers.gemini.api_key');
-        $this->model = 'gemini-2.5-flash';
-        $this->timeout = config('ai_models.timeout');
+        $this->apiKey = $config['api_key'];
+        $this->model = $config['model'];
+        $this->timeout = $config['timeout'];
     }
 
     public function generateAssessment(string $content, array $options = []): array
     {
         $prompt = $this->buildPrompt($content, '', $options);
-        
+
         return $this->makeRequest($prompt);
     }
 
     public function generateChunk(string $chunkContent, string $previousContext, array $options = []): array
     {
         $prompt = $this->buildPrompt($chunkContent, $previousContext, $options);
-        
+
         return $this->makeRequest($prompt);
     }
 
@@ -102,13 +102,13 @@ class GeminiProvider implements AIServiceInterface
             }
 
             $data = $response->json();
-            
+
             if (!isset($data['candidates'][0]['content']['parts'][0]['text'])) {
                 throw new \Exception('Invalid response structure from Gemini');
             }
 
             $content = $data['candidates'][0]['content']['parts'][0]['text'];
-            
+
             // Extract JSON from response (Gemini sometimes wraps it in markdown)
             if (preg_match('/```json\s*(.*?)\s*```/s', $content, $matches)) {
                 $content = $matches[1];
@@ -127,4 +127,3 @@ class GeminiProvider implements AIServiceInterface
         }
     }
 }
-

@@ -7,55 +7,37 @@ return [
     | AI Provider Configurations
     |--------------------------------------------------------------------------
     |
-    | Configure the AI providers and their models for assessment generation.
-    | Each provider has specific token limits and capabilities.
+    | Configure the AI providers for assessment generation.
+    | Each provider has a single model with specific token limits.
     |
     */
 
     'providers' => [
         'openai' => [
             'api_key' => env('OPENAI_API_KEY'),
-            'models' => [
-                'gpt-4o-mini' => [
-                    'max_input_tokens' => 128000,
-                    'max_output_tokens' => 16384,
-                    'safe_limit' => 100000, // 80% of max for safety
-                ],
-                'gpt-4' => [
-                    'max_input_tokens' => 8192,
-                    'max_output_tokens' => 4096,
-                    'safe_limit' => 6000,
-                ],
+            'model' => 'gpt-3.5-turbo',
+            'limits' => [
+                'max_input_tokens' => 16385,
+                'max_output_tokens' => 4096,
+                'safe_limit' => 12000,
             ],
         ],
-        'anthropic' => [
-            'api_key' => env('ANTHROPIC_API_KEY'),
-            'models' => [
-                'claude-3-5-sonnet-20241022' => [
-                    'max_input_tokens' => 200000,
-                    'max_output_tokens' => 8192,
-                    'safe_limit' => 160000,
-                ],
-                'claude-3-haiku-20240307' => [
-                    'max_input_tokens' => 200000,
-                    'max_output_tokens' => 4096,
-                    'safe_limit' => 160000,
-                ],
+        'groq' => [
+            'api_key' => env('GROQ_API_KEY'),
+            'model' => 'llama-3.3-70b-versatile',
+            'limits' => [
+                'max_input_tokens' => 128000,
+                'max_output_tokens' => 32768,
+                'safe_limit' => 100000,
             ],
         ],
         'gemini' => [
             'api_key' => env('GEMINI_API_KEY'),
-            'models' => [
-                'gemini-2.5-flash' => [
-                    'max_input_tokens' => 32768,
-                    'max_output_tokens' => 8192,
-                    'safe_limit' => 25000,
-                ],
-                // 'gemini-1.5-pro' => [
-                //     'max_input_tokens' => 1000000,
-                //     'max_output_tokens' => 8192,
-                //     'safe_limit' => 800000,
-                // ],
+            'model' => 'gemini-2.5-flash',
+            'limits' => [
+                'max_input_tokens' => 1048576,
+                'max_output_tokens' => 65536,
+                'safe_limit' => 800000,
             ],
         ],
     ],
@@ -70,23 +52,22 @@ return [
     */
 
     'chunking' => [
-        'buffer_tokens' => 10000, // Reserve for prompt/response overhead
-        'overlap_percentage' => 0.05, // 5% overlap between chunks for context
-        'tokens_per_word' => 1.3, // Average tokens per word conversion factor
+        'buffer_tokens' => 10000,
+        'overlap_percentage' => 0.05,
+        'tokens_per_word' => 1.3,
     ],
 
     /*
     |--------------------------------------------------------------------------
-    | Primary Provider & Model
+    | Primary Provider
     |--------------------------------------------------------------------------
     |
-    | The primary provider and model to use for AI generation.
+    | The primary provider to use for AI generation.
     | This will be tried first before falling back to other providers.
     |
     */
 
     'primary_provider' => 'openai',
-    'primary_model' => 'gpt-4o-mini',
 
     /*
     |--------------------------------------------------------------------------
@@ -94,14 +75,13 @@ return [
     |--------------------------------------------------------------------------
     |
     | The order in which providers will be tried if the primary fails.
-    | Each provider will be tried once before moving to the next.
     |
     */
 
     'fallback_order' => [
         'openai',
-        'anthropic',
         'gemini',
+        'groq',
     ],
 
     /*
@@ -110,11 +90,9 @@ return [
     |--------------------------------------------------------------------------
     |
     | Maximum time (in seconds) to wait for an AI provider response.
-    | After this timeout, the request will fail and try the next provider.
     |
     */
 
-    'timeout' => 30,
+    'timeout' => 120,
 
 ];
-

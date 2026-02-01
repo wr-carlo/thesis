@@ -487,6 +487,10 @@ class LessonController extends Controller
             'departments' => $departments,
             'sections' => $sections,
             'selectedSectionIds' => [], // Empty for new assessments
+            'aiMetadata' => [
+                'provider_used' => $sessionData['ai_metadata']['provider_used'] ?? null,
+                'chunks_processed' => $sessionData['ai_metadata']['chunks_processed'] ?? 1,
+            ],
         ]);
     }
 

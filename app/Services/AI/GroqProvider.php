@@ -4,7 +4,7 @@ namespace App\Services\AI;
 
 use Illuminate\Support\Facades\Http;
 
-class OpenAIProvider implements AIServiceInterface
+class GroqProvider implements AIServiceInterface
 {
     protected string $apiKey;
     protected string $model;
@@ -38,7 +38,7 @@ class OpenAIProvider implements AIServiceInterface
         $trueOrFalseCount = $options['true_or_false_count'] ?? 0;
         $difficulty = $options['difficulty'] ?? 'medium';
 
-        $systemPrompt = "You are an expert assessment generator. Generate educational assessment questions based on the provided lesson content.";
+        $systemPrompt = "You are an expert assessment generator. Generate educational assessment questions based on the provided lesson content. Always respond with valid JSON only.";
 
         $userPrompt = "Generate assessment questions based on this lesson content:\n\n";
 
@@ -92,7 +92,7 @@ class OpenAIProvider implements AIServiceInterface
                     'Authorization' => 'Bearer ' . $this->apiKey,
                     'Content-Type' => 'application/json',
                 ])
-                ->post('https://api.openai.com/v1/chat/completions', [
+                ->post('https://api.groq.com/openai/v1/chat/completions', [
                     'model' => $this->model,
                     'messages' => [
                         [
@@ -109,26 +109,26 @@ class OpenAIProvider implements AIServiceInterface
                 ]);
 
             if (!$response->successful()) {
-                throw new \Exception('OpenAI API request failed: ' . $response->body());
+                throw new \Exception('Groq API request failed: ' . $response->body());
             }
 
             $data = $response->json();
 
             if (!isset($data['choices'][0]['message']['content'])) {
-                throw new \Exception('Invalid response structure from OpenAI');
+                throw new \Exception('Invalid response structure from Groq');
             }
 
             $content = $data['choices'][0]['message']['content'];
             $result = json_decode($content, true);
 
             if (json_last_error() !== JSON_ERROR_NONE) {
-                throw new \Exception('Invalid JSON response from OpenAI: ' . json_last_error_msg());
+                throw new \Exception('Invalid JSON response from Groq: ' . json_last_error_msg());
             }
 
             return $result;
 
         } catch (\Exception $e) {
-            throw new \Exception('OpenAI Provider Error: ' . $e->getMessage());
+            throw new \Exception('Groq Provider Error: ' . $e->getMessage());
         }
     }
 }
