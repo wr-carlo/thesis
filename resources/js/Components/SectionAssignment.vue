@@ -401,11 +401,27 @@ const selectedDepartmentId = ref(null);
 const searchQuery = ref("");
 const selectedSectionIds = ref([...props.selectedSectionIds]);
 
+// Flag to prevent reactivity loop
+let isUpdatingFromProps = false;
+
+// Helper to check if arrays are equal (same elements, regardless of order)
+const arraysEqual = (a, b) => {
+    if (a.length !== b.length) return false;
+    const sortedA = [...a].sort();
+    const sortedB = [...b].sort();
+    return sortedA.every((val, idx) => val === sortedB[idx]);
+};
+
 // Watch for prop changes and update local state
 watch(
     () => props.selectedSectionIds,
     (newVal) => {
-        selectedSectionIds.value = [...newVal];
+        // Only update if values are actually different
+        if (!arraysEqual(selectedSectionIds.value, newVal)) {
+            isUpdatingFromProps = true;
+            selectedSectionIds.value = [...newVal];
+            isUpdatingFromProps = false;
+        }
     },
     { deep: true }
 );
@@ -414,7 +430,10 @@ watch(
 watch(
     selectedSectionIds,
     (newVal) => {
-        emit("update:selectedSectionIds", newVal);
+        // Don't emit if update came from props (prevents loop)
+        if (!isUpdatingFromProps) {
+            emit("update:selectedSectionIds", [...newVal]);
+        }
     },
     { deep: true }
 );
