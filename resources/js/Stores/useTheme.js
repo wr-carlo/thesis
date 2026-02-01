@@ -8,10 +8,8 @@ const storageKey = "admin-theme";
 
 export function initTheme() {
     const stored = localStorage.getItem(storageKey);
-    const prefersDark =
-        window.matchMedia &&
-        window.matchMedia("(prefers-color-scheme: dark)").matches;
-    state.theme = stored || (prefersDark ? "dark" : "light");
+    // Default to light mode, only use dark if explicitly saved in localStorage
+    state.theme = stored || "light";
     applyTheme();
 }
 
