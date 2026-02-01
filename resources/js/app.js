@@ -1,10 +1,10 @@
 import "./bootstrap";
 import "../css/app.css";
 
+import { ZiggyVue } from "ziggy-js";
 import { createApp, h } from "vue";
 import { createInertiaApp, router } from "@inertiajs/vue3";
 import { resolvePageComponent } from "laravel-vite-plugin/inertia-helpers";
-import { ZiggyVue } from "../../vendor/tightenco/ziggy";
 import { initTheme } from "./Stores/useTheme";
 import { useLoading } from "./Stores/useLoading";
 import LoadingIndicator from "./Components/LoadingIndicator.vue";
