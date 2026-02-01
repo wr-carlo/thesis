@@ -8,9 +8,12 @@ use Illuminate\Support\Facades\Hash;
 
 class AdminSeeder extends Seeder
 {
+    /**
+     * Seed the default admin user.
+     */
     public function run(): void
     {
-        User::firstOrCreate(
+        $admin = User::firstOrCreate(
             ['id_number' => 1001],
             [
                 'name' => 'Administrator',
@@ -18,6 +21,12 @@ class AdminSeeder extends Seeder
                 'password' => Hash::make('chcc@2025'),
             ]
         );
+
+        if ($admin->wasRecentlyCreated) {
+            $this->command->info('Admin user created successfully.');
+        } else {
+            $this->command->info('Admin user already exists.');
+        }
     }
 }
 

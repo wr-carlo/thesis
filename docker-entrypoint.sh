@@ -39,6 +39,12 @@ if [ "$RUN_MIGRATIONS" = "true" ] || [ "$RUN_MIGRATIONS" = "1" ]; then
     php artisan migrate --force
 fi
 
+# Seed admin user (runs only if SEED_ADMIN is true)
+if [ "$SEED_ADMIN" = "true" ] || [ "$SEED_ADMIN" = "1" ]; then
+    echo "👤 Seeding admin user..."
+    php artisan db:seed --class=AdminSeeder --force
+fi
+
 # Clear and rebuild caches for production
 echo "🔧 Optimizing for production..."
 php artisan config:clear
