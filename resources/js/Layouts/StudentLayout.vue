@@ -2,12 +2,17 @@
 import { Link, usePage } from "@inertiajs/vue3";
 import { computed, ref } from "vue";
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
+import Breadcrumb from "@/Components/Breadcrumb.vue";
 import NotificationDropdown from "@/Components/NotificationDropdown.vue";
 import Toast from "@/Components/Toast.vue";
+import { getBreadcrumbItems } from "@/Stores/useBreadcrumbs";
 import { toggleTheme, useTheme } from "@/Stores/useTheme";
 
 const page = usePage();
 const flash = computed(() => page.props.flash || {});
+const breadcrumbItems = computed(() =>
+    getBreadcrumbItems(route().current(), page.props)
+);
 const theme = useTheme();
 const sidebarOpen = ref(false);
 
@@ -205,6 +210,7 @@ const isActive = (routeName) => {
         <!-- Main Content -->
         <main class="lg:ml-64 min-h-screen pt-20 lg:pt-0">
             <div class="p-6">
+                <Breadcrumb v-if="breadcrumbItems.length" :items="breadcrumbItems" />
                 <slot />
             </div>
         </main>

@@ -1,7 +1,6 @@
 <script setup>
 import AdminLayout from "@/Layouts/AdminLayout.vue";
 import DataTable from "@/Components/DataTable.vue";
-import Breadcrumb from "@/Components/Breadcrumb.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import { Head, router } from "@inertiajs/vue3";
 import { ref, watch } from "vue";
@@ -11,11 +10,6 @@ const props = defineProps({
     logs: Object,
     filters: Object,
 });
-
-const breadcrumbItems = [
-    { label: "Dashboard", route: "admin.dashboard" },
-    { label: "Logs", current: true },
-];
 
 const searchQuery = ref(props.filters?.search || "");
 let searchTimeout = null;
@@ -44,7 +38,6 @@ watch(searchQuery, (newValue) => {
 <template>
     <AdminLayout>
         <Head title="Logs" />
-        <Breadcrumb :items="breadcrumbItems" />
         <div class="flex items-center justify-between mb-4">
             <h1 class="text-xl font-semibold">Activity Logs</h1>
         </div>

@@ -1,6 +1,6 @@
 <script setup>
 import InstructorLayout from '@/Layouts/InstructorLayout.vue';
-import { Head, Link, router, usePage } from '@inertiajs/vue3';
+import { Head, router, usePage } from '@inertiajs/vue3';
 import { computed, ref, watch } from 'vue';
 import { useToast } from '@/Stores/useToast';
 
@@ -75,16 +75,7 @@ const isProcessing = (requestId) => processingRequest.value === requestId;
         <Head :title="`Join Requests - ${subject.name}`" />
 
         <div class="mb-6">
-            <Link
-                :href="route('instructor.subjects.index')"
-                class="text-sm text-text-secondary hover:text-text-primary dark:hover:text-text-inverted mb-2 inline-flex items-center gap-2"
-            >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-                </svg>
-                Back to Subjects
-            </Link>
-            <h1 class="text-2xl font-bold text-text-primary dark:text-text-inverted mt-2">
+            <h1 class="text-2xl font-bold text-text-primary dark:text-text-inverted">
                 Join Requests - {{ subject.name }}
             </h1>
             <p class="text-text-secondary">Manage student requests to join this subject.</p>

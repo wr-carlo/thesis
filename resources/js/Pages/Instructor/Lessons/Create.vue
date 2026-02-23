@@ -13,12 +13,6 @@
                             >
                                 Upload New Lesson
                             </h2>
-                            <Link
-                                :href="route('instructor.lessons.index')"
-                                class="text-blue-600 hover:text-blue-800"
-                            >
-                                Back to Lessons
-                            </Link>
                         </div>
 
                         <form @submit.prevent="submitForm" class="space-y-6">
@@ -272,7 +266,7 @@
 
 <script setup>
 import { ref } from "vue";
-import { useForm, Link } from "@inertiajs/vue3";
+import { useForm } from "@inertiajs/vue3";
 import InstructorLayout from "@/Layouts/InstructorLayout.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import TextInput from "@/Components/TextInput.vue";
