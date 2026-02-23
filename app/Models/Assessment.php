@@ -14,6 +14,7 @@ class Assessment extends Model
         'title',
         'type',
         'parent_assessment_id',
+        'source_attempt_id',
         'status',
     ];
 
@@ -29,6 +30,11 @@ class Assessment extends Model
     public function parent()
     {
         return $this->belongsTo(self::class, 'parent_assessment_id');
+    }
+
+    public function sourceAttempt()
+    {
+        return $this->belongsTo(AssessmentAttempt::class, 'source_attempt_id');
     }
 
     public function children()
