@@ -14,6 +14,7 @@ use App\Http\Controllers\Student\DashboardController as StudentDashboardControll
 use App\Http\Controllers\Student\NotificationController as StudentNotificationController;
 use App\Http\Controllers\Student\ProfileController as StudentProfileController;
 use App\Http\Controllers\Student\SubjectController as StudentSubjectController;
+use App\Http\Controllers\Instructor\AssessmentHistoryController;
 use App\Http\Controllers\Instructor\DashboardController as InstructorDashboardController;
 use App\Http\Controllers\Instructor\LessonController;
 use App\Http\Controllers\Instructor\NotificationController as InstructorNotificationController;
@@ -117,6 +118,10 @@ Route::middleware(['auth', 'instructor'])->prefix('instructor')->as('instructor.
     Route::get('lessons/review', [\App\Http\Controllers\Instructor\LessonController::class, 'review'])->name('lessons.review');
     Route::post('lessons/review/save', [\App\Http\Controllers\Instructor\LessonController::class, 'saveFromReview'])->name('lessons.review.save');
     Route::post('lessons/review/cancel', [\App\Http\Controllers\Instructor\LessonController::class, 'cancelReview'])->name('lessons.review.cancel');
+
+    // Assessment History
+    Route::get('assessments/{assessment}/history', [AssessmentHistoryController::class, 'show'])->name('assessments.history');
+    Route::get('assessments/{assessment}/history/students/{student}', [AssessmentHistoryController::class, 'showStudent'])->name('assessments.history.student');
 
     // Notifications
     Route::get('notifications/unread', [InstructorNotificationController::class, 'index'])->name('notifications.unread');
