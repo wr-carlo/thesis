@@ -124,11 +124,19 @@
                     >
                         <!-- Card Header -->
                         <div class="mb-4">
-                            <h3
-                                class="text-lg font-semibold text-gray-900 dark:text-white mb-1.5 line-clamp-2 group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors"
-                            >
-                                {{ lesson.title }}
-                            </h3>
+                            <div class="flex items-center justify-between">
+                                <h3
+                                    class="text-lg font-semibold text-gray-900 dark:text-white line-clamp-2 group-hover:text-gray-700 dark:group-hover:text-gray-200 transition-colors"
+                                >
+                                    {{ lesson.title }}
+                                </h3>
+
+                                <span
+                                class="text-xs text-gray-500 dark:text-gray-400"
+                                >
+                                    {{ formatDate(lesson.created_at) }}
+                                </span>
+                            </div>
                             <p class="text-sm text-gray-500 dark:text-gray-400">
                                 {{ lesson.subject?.name || "No subject" }}
                             </p>
@@ -206,14 +214,34 @@
 
                         <!-- Footer -->
                         <div
-                            class="flex items-center justify-between pt-4 border-t border-gray-100 dark:border-gray-700/50"
+                            class="flex justify-end pt-4 border-t border-gray-100 dark:border-gray-700/50"
                         >
-                            <span
-                                class="text-xs text-gray-500 dark:text-gray-400"
-                            >
-                                {{ formatDate(lesson.created_at) }}
-                            </span>
-                            <div class="flex items-center gap-2">
+                            <div class="flex items-end gap-2">
+                                <Link
+                                    v-if="getMainAssessmentId(lesson)"
+                                    :href="
+                                        route(
+                                            'instructor.assessments.history',
+                                            getMainAssessmentId(lesson)
+                                        )
+                                    "
+                                    class="inline-flex items-center px-3 py-1.5 text-xs font-medium text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg hover:bg-indigo-100 dark:hover:bg-indigo-900/30 transition-colors duration-150"
+                                >
+                                    <svg
+                                        class="w-3.5 h-3.5 mr-1.5"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                            stroke-width="2"
+                                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                                        />
+                                    </svg>
+                                    History
+                                </Link>
                                 <Link
                                     :href="
                                         route(
@@ -426,5 +454,12 @@ const handleSearch = () => {
 
 const handleStatusFilter = () => {
     applyFilters();
+};
+
+const getMainAssessmentId = (lesson) => {
+    const assessments = lesson.assessments || [];
+    if (!assessments.length) return null;
+    const main = assessments.find((a) => !a.parent_assessment_id);
+    return (main || assessments[0])?.id ?? null;
 };
 </script>
