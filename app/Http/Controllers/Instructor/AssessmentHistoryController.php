@@ -16,7 +16,7 @@ class AssessmentHistoryController extends Controller
     /**
      * Display assessment history - list of students who took this assessment.
      */
-    public function show(Assessment $assessment)
+    public function show(Request $request, Assessment $assessment)
     {
         $professor = auth()->user()->professor;
 
@@ -30,10 +30,23 @@ class AssessmentHistoryController extends Controller
             abort(403, 'You do not have access to this assessment');
         }
 
-        $attempts = AssessmentAttempt::where('assessment_id', $assessment->id)
-            ->with(['answers', 'student.user'])
-            ->latest('created_at')
-            ->get();
+        $attemptsQuery = AssessmentAttempt::where('assessment_id', $assessment->id)
+            ->with(['answers', 'student.user', 'student.section']);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $attemptsQuery->whereHas('student.user', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('section')) {
+            $attemptsQuery->whereHas('student', function ($q) use ($request) {
+                $q->where('section_id', $request->section);
+            });
+        }
+
+        $attempts = $attemptsQuery->latest('created_at')->get();
 
         $totalQuestions = $assessment->items->count();
 
@@ -47,6 +60,8 @@ class AssessmentHistoryController extends Controller
                 'id' => $attempt->id,
                 'student_id' => $attempt->student_id,
                 'student_name' => $attempt->student->user->name ?? 'Unknown',
+                'section_id' => $attempt->student->section_id,
+                'section_name' => $attempt->student->section->name ?? null,
                 'attempt_no' => $attempt->attempt_no,
                 'created_at' => $attempt->created_at,
                 'score' => $score,
@@ -58,20 +73,45 @@ class AssessmentHistoryController extends Controller
             return [
                 'student_id' => $first['student_id'],
                 'student_name' => $first['student_name'],
+                'section_id' => $first['section_id'],
+                'section_name' => $first['section_name'],
                 'attempt_count' => $studentAttempts->count(),
                 'best_score' => $studentAttempts->max('score'),
                 'latest_attempt_date' => $studentAttempts->first()['created_at'],
             ];
         })->values();
 
+        $sections = AssessmentAttempt::where('assessment_id', $assessment->id)
+            ->join('students', 'assessment_attempt.student_id', '=', 'students.id')
+            ->join('sections', 'students.section_id', '=', 'sections.id')
+            ->select('sections.id', 'sections.name')
+            ->distinct()
+            ->orderBy('sections.name')
+            ->get()
+            ->map(fn ($s) => ['id' => $s->id, 'name' => $s->name]);
+
         $totalAttempts = $attemptsData->count();
         $bestScore = $attemptsData->max('score') ?? 0;
         $bestAttempt = $attemptsData->firstWhere('score', $bestScore);
         $latestAttempt = $attemptsData->first();
 
-        $firstAttemptIds = AssessmentAttempt::where('assessment_id', $assessment->id)
-            ->where('attempt_no', 1)
-            ->pluck('id');
+        $firstAttemptsQuery = AssessmentAttempt::where('assessment_id', $assessment->id)
+            ->where('attempt_no', 1);
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $firstAttemptsQuery->whereHas('student.user', function ($q) use ($search) {
+                $q->where('name', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('section')) {
+            $firstAttemptsQuery->whereHas('student', function ($q) use ($request) {
+                $q->where('section_id', $request->section);
+            });
+        }
+
+        $firstAttemptIds = $firstAttemptsQuery->pluck('id');
 
         $mistakeCounts = StudentAnswer::whereIn('attempt_id', $firstAttemptIds)
             ->where('correct_answer', false)
@@ -113,6 +153,11 @@ class AssessmentHistoryController extends Controller
             ],
             'students' => $studentsData,
             'most_common_mistakes' => $mostCommonMistakes,
+            'sections' => $sections,
+            'filters' => [
+                'search' => $request->search ?? null,
+                'section' => $request->section ?? null,
+            ],
         ]);
     }
 
