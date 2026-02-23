@@ -2,7 +2,7 @@
 import { ref } from "vue";
 import InstructorLayout from "@/Layouts/InstructorLayout.vue";
 import Modal from "@/Components/Modal.vue";
-import { Head, Link } from "@inertiajs/vue3";
+import { Head, Link, router } from "@inertiajs/vue3";
 
 const props = defineProps({
     assessment: Object,
@@ -12,9 +12,52 @@ const props = defineProps({
         type: Array,
         default: () => [],
     },
+    sections: {
+        type: Array,
+        default: () => [],
+    },
+    filters: {
+        type: Object,
+        default: () => ({ search: null, section: null }),
+    },
 });
 
 const showMistakesModal = ref(false);
+const searchQuery = ref(props.filters?.search || "");
+const sectionFilter = ref(props.filters?.section || "all");
+let searchTimeout = null;
+
+const applyFilters = () => {
+    router.get(
+        route("instructor.assessments.history", props.assessment.id),
+        {
+            search: searchQuery.value || null,
+            section: sectionFilter.value === "all" ? null : sectionFilter.value,
+        },
+        {
+            preserveState: true,
+            preserveScroll: true,
+            replace: true,
+        }
+    );
+};
+
+const handleSearch = () => {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(applyFilters, 300);
+};
+
+const handleSectionFilter = () => {
+    applyFilters();
+};
+
+const activeSectionName = () => {
+    if (!props.filters?.section) return null;
+    const s = props.sections?.find(
+        (sec) => String(sec.id) === String(props.filters.section)
+    );
+    return s?.name ?? null;
+};
 
 const formatDate = (dateString) => {
     if (!dateString) return null;
@@ -114,8 +157,59 @@ const getScoreColor = (score) => {
                     </div>
                     <div class="text-xs text-text-secondary mt-1">
                         Most missed on first take
+                        <span v-if="activeSectionName()">
+                            ({{ activeSectionName() }})
+                        </span>
                     </div>
                 </button>
+            </div>
+
+            <!-- Search and Filter Section -->
+            <div class="mb-6 flex flex-col sm:flex-row gap-4">
+                <div class="flex-1">
+                    <div class="relative">
+                        <div
+                            class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
+                        >
+                            <svg
+                                class="h-5 w-5 text-gray-400 dark:text-gray-500"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                                />
+                            </svg>
+                        </div>
+                        <input
+                            v-model="searchQuery"
+                            @input="handleSearch"
+                            type="text"
+                            placeholder="Search by student name..."
+                            class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent text-sm"
+                        />
+                    </div>
+                </div>
+                <div class="sm:w-48">
+                    <select
+                        v-model="sectionFilter"
+                        @change="handleSectionFilter"
+                        class="block w-full px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent text-sm"
+                    >
+                        <option value="all">All Sections</option>
+                        <option
+                            v-for="section in sections"
+                            :key="section.id"
+                            :value="section.id"
+                        >
+                            {{ section.name }}
+                        </option>
+                    </select>
+                </div>
             </div>
 
             <!-- Students List -->
@@ -176,6 +270,9 @@ const getScoreColor = (score) => {
                                 {{ student.attempt_count }}
                                 {{ student.attempt_count === 1 ? "attempt" : "attempts" }}
                                 · Best: {{ student.best_score }}%
+                                <span v-if="student.section_name" class="ml-1">
+                                    · {{ student.section_name }}
+                                </span>
                             </p>
                             <p
                                 v-if="student.latest_attempt_date"
@@ -210,6 +307,12 @@ const getScoreColor = (score) => {
                         </h2>
                         <p class="text-sm text-text-secondary mt-1">
                             Ranked by how many students got it wrong
+                            <span
+                                v-if="activeSectionName()"
+                                class="font-medium text-accent-primary"
+                            >
+                                · Filtered by: {{ activeSectionName() }}
+                            </span>
                         </p>
                     </div>
                     <button
@@ -226,7 +329,13 @@ const getScoreColor = (score) => {
                     v-if="most_common_mistakes.length === 0"
                     class="py-12 text-center text-text-secondary"
                 >
-                    <p>No mistakes recorded on first attempts.</p>
+                    <p>
+                        {{
+                            activeSectionName()
+                                ? `No mistakes recorded on first attempts for ${activeSectionName()}.`
+                                : "No mistakes recorded on first attempts."
+                        }}
+                    </p>
                 </div>
                 <div
                     v-else
