@@ -42,13 +42,6 @@ const getScoreColor = (score) => {
         <div class="max-w-4xl mx-auto">
             <!-- Header -->
             <div class="mb-6">
-                <Link
-                    :href="route('instructor.lessons.index')"
-                    class="inline-flex items-center justify-center px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm font-medium rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 mb-4"
-                >
-                    ← Back to Lessons
-                </Link>
-
                 <div class="card p-6">
                     <h1
                         class="text-2xl font-bold text-text-primary dark:text-text-inverted mb-2"

@@ -127,13 +127,7 @@ const goToQuestion = (index) => {
         <div class="max-w-4xl mx-auto">
             <!-- Header -->
             <div class="mb-6">
-                <div class="flex items-center gap-3 mb-4">
-                    <Link
-                        :href="route('student.assessments.index')"
-                        class="inline-flex items-center justify-center px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 text-sm font-medium rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-                    >
-                        ← Back to Assessments
-                    </Link>
+                <div class="flex items-center justify-end mb-4">
                     <Link
                         :href="route('student.assessments.history', assessment.id)"
                         class="inline-flex items-center justify-center px-4 py-2 bg-blue-500 text-white text-sm font-medium rounded-lg hover:bg-blue-600 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"

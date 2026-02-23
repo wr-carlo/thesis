@@ -2,11 +2,16 @@
 import { Link, usePage } from "@inertiajs/vue3";
 import { computed, ref, onMounted, watch } from "vue";
 import ApplicationLogo from "@/Components/ApplicationLogo.vue";
+import Breadcrumb from "@/Components/Breadcrumb.vue";
 import Toast from "@/Components/Toast.vue";
+import { getBreadcrumbItems } from "@/Stores/useBreadcrumbs";
 import { toggleTheme, useTheme } from "@/Stores/useTheme";
 
 const page = usePage();
 const flash = computed(() => page.props.flash || {});
+const breadcrumbItems = computed(() =>
+    getBreadcrumbItems(route().current(), page.props)
+);
 const theme = useTheme();
 const sidebarOpen = ref(false);
 const usersMenuOpen = ref(false);
@@ -214,6 +219,7 @@ watch(
                     >
                         {{ flash.value.success }}
                     </div>
+                    <Breadcrumb v-if="breadcrumbItems.length" :items="breadcrumbItems" />
                     <slot />
                 </main>
             </div>

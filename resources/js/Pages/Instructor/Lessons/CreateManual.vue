@@ -4,38 +4,17 @@
         <div class="max-w-7xl mx-auto py-6">
             <!-- Header -->
             <div class="mb-6">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h1
-                            class="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight"
-                        >
-                            Create Manual Assessment
-                        </h1>
-                        <p
-                            class="mt-1.5 text-sm text-gray-500 dark:text-gray-400"
-                        >
-                            Manually create assessment questions
-                        </p>
-                    </div>
-                    <Link
-                        :href="route('instructor.lessons.index')"
-                        class="inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                <div>
+                    <h1
+                        class="text-2xl font-semibold text-gray-900 dark:text-white tracking-tight"
                     >
-                        <svg
-                            class="w-4 h-4 mr-2"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M10 19l-7-7m0 0l7-7m-7 7h18"
-                            />
-                        </svg>
-                        Back to Lessons
-                    </Link>
+                        Create Manual Assessment
+                    </h1>
+                    <p
+                        class="mt-1.5 text-sm text-gray-500 dark:text-gray-400"
+                    >
+                        Manually create assessment questions
+                    </p>
                 </div>
             </div>
 
