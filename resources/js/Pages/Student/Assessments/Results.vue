@@ -1,14 +1,53 @@
 <script setup>
 import StudentLayout from "@/Layouts/StudentLayout.vue";
-import { Head, Link } from "@inertiajs/vue3";
-import { computed, ref } from "vue";
+import { Head, Link, router, usePage } from "@inertiajs/vue3";
+import { computed, ref, onMounted } from "vue";
 
 const props = defineProps({
     assessment: Object,
     attempt: Object,
     results: Object,
     items: Array,
+    show_adaptive_button: Boolean,
+    has_wrong_answers: Boolean,
 });
+
+const page = usePage();
+const adaptiveLoading = ref(false);
+const adaptiveError = ref(null);
+
+onMounted(() => {
+    if (page.props.errors?.error) {
+        adaptiveError.value = page.props.errors.error;
+    }
+});
+
+const showAdaptiveButton = computed(() => props.show_adaptive_button === true);
+
+const generateAdaptive = () => {
+    adaptiveError.value = null;
+    adaptiveLoading.value = true;
+    router.post(
+        route("student.assessments.adaptive", {
+            assessment: props.assessment.id,
+            attempt: props.attempt.id,
+        }),
+        {},
+        {
+            preserveScroll: true,
+            onSuccess: () => {
+                adaptiveLoading.value = false;
+            },
+            onError: (errors) => {
+                adaptiveLoading.value = false;
+                adaptiveError.value = errors.error || "Failed to generate adaptive assessment.";
+            },
+            onFinish: () => {
+                adaptiveLoading.value = false;
+            },
+        }
+    );
+};
 
 const currentQuestionIndex = ref(0);
 
@@ -185,6 +224,76 @@ const goToQuestion = (index) => {
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- Adaptive Assessment Button -->
+            <div
+                v-if="showAdaptiveButton"
+                class="mb-6 card p-6 border-2 border-dashed border-accent-primary bg-accent-primary/5 dark:bg-accent-primary/10"
+            >
+                <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div class="flex items-center gap-3">
+                        <div
+                            class="w-12 h-12 rounded-full bg-accent-primary/20 dark:bg-accent-primary/30 flex items-center justify-center"
+                        >
+                            <svg
+                                class="w-6 h-6 text-accent-primary"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
+                                />
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-text-primary dark:text-text-inverted">
+                                Practice Wrong Answers
+                            </h3>
+                            <p class="text-sm text-text-secondary">
+                                Generate a custom assessment focused on your learning gaps.
+                            </p>
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        @click="generateAdaptive"
+                        :disabled="adaptiveLoading"
+                        class="inline-flex items-center gap-2 px-5 py-2.5 bg-accent-primary text-white font-medium rounded-lg hover:bg-accent-muted transition-colors disabled:opacity-70 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-accent-primary focus:ring-offset-2"
+                    >
+                        <svg
+                            v-if="adaptiveLoading"
+                            class="animate-spin w-5 h-5"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                        >
+                            <circle
+                                class="opacity-25"
+                                cx="12"
+                                cy="12"
+                                r="10"
+                                stroke="currentColor"
+                                stroke-width="4"
+                            />
+                            <path
+                                class="opacity-75"
+                                fill="currentColor"
+                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            />
+                        </svg>
+                        <span>{{ adaptiveLoading ? "Generating..." : "Generate Adaptive Assessment" }}</span>
+                    </button>
+                </div>
+                <p
+                    v-if="adaptiveError"
+                    class="mt-4 text-sm text-red-600 dark:text-red-400"
+                >
+                    {{ adaptiveError }}
+                </p>
             </div>
 
             <!-- Question Results -->
