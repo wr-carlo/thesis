@@ -30,7 +30,7 @@ class SubjectController extends Controller
         $search = $request->string('search')->toString();
 
         // Get all subjects with their assigned professors
-        $subjects = Subject::with(['professors.user'])
+        $subjects = Subject::with(['professors.user', 'professors.department'])
             ->when($search, function ($query, $term) {
                 $query->where(function ($q) use ($term) {
                     $q->where('name', 'like', "%{$term}%")
@@ -81,6 +81,7 @@ class SubjectController extends Controller
                         'name' => $professor->user->name,
                         'user_id' => $professor->user_id,
                         'is_selected' => $isSelected,
+                        'department_name' => $professor->department?->name,
                     ];
                 });
 

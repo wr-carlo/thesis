@@ -120,6 +120,47 @@ const joinSubject = (subject, professorId) => {
 const isProcessing = (subjectId, professorId) => {
     return processingJoin.value === `${subjectId}-${professorId}`;
 };
+
+const getInstructorDepartmentClasses = (departmentName) => {
+    switch ((departmentName || "").trim()) {
+        case "Hospitality Management":
+            return "bg-orange-50 dark:bg-orange-900/20";
+        case "Criminology":
+            return "bg-slate-100 dark:bg-slate-800/70";
+        case "Nursing":
+            return "bg-rose-50 dark:bg-rose-900/20";
+        case "Business Administration":
+            return "bg-emerald-50 dark:bg-emerald-900/20";
+        case "Education":
+            return "bg-sky-50 dark:bg-sky-900/20";
+        case "Computer Science":
+            return "";
+        default:
+            return "bg-surface-muted dark:bg-surface-dark-muted";
+    }
+};
+
+const getInstructorDepartmentStyle = (departmentName) => {
+    switch ((departmentName || "").trim()) {
+        case "Computer Science":
+            return {
+                backgroundImage:
+                    "linear-gradient(to right, rgba(8, 20, 53, 0.72), rgba(7, 15, 35, 0.62)), url('/images/program/computer-science-background.jpg')",
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+            };
+        case "Hospitality Management":
+        case "Criminology":
+        case "Nursing":
+        case "Business Administration":
+        case "Education":
+        default:
+            // Placeholder for future department-specific images
+            return {};
+    }
+};
+
+
 </script>
 
 <template>
@@ -265,15 +306,20 @@ const isProcessing = (subjectId, professorId) => {
                             v-for="instructor in subject.instructors"
                             :key="instructor.id"
                             :class="[
-                                'flex items-center justify-between p-2 rounded-lg transition-colors',
+                                'flex items-center justify-between p-2 rounded-lg transition-colors border',
                                 instructor.is_selected
-                                    ? 'bg-accent-primary/10 border border-accent-primary/30 dark:bg-accent-primary/20'
-                                    : 'bg-surface-muted dark:bg-surface-dark-muted',
+                                    ? 'border-accent-primary/40 dark:border-accent-primary/50 ring-1 ring-accent-primary/20'
+                                    : `border-transparent ${getInstructorDepartmentClasses(instructor.department_name)}`,
                             ]"
+                            :style="
+                                getInstructorDepartmentStyle(
+                                    instructor.department_name
+                                )
+                            "
                         >
                             <div class="flex items-center gap-2 flex-1 min-w-0">
-                                <span
-                                    class="text-sm text-text-primary dark:text-text-inverted truncate"
+                                <span class="text-sm truncate text-white"
+                                    
                                 >
                                     {{ instructor.name }}
                                 </span>
@@ -383,6 +429,7 @@ const isProcessing = (subjectId, professorId) => {
 .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
