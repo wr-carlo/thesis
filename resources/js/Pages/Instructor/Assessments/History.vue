@@ -76,6 +76,27 @@ const getScoreColor = (score) => {
     if (score >= 50) return "text-yellow-600 dark:text-yellow-400";
     return "text-red-600 dark:text-red-400";
 };
+
+const getMasteryPercent = (student) => {
+    const value = Number(student?.mastery_percent ?? 0);
+    if (Number.isNaN(value)) return 0;
+    return Math.max(0, Math.min(100, value));
+};
+
+const getMasteryColor = (student) => {
+    const percent = getMasteryPercent(student);
+    if (percent > 75) return "#05ff00"; // high
+    if (percent > 50) return "#d79f00"; // middle
+    return "#ff0000"; // low
+};
+
+const getMasteryRingStyle = (student) => {
+    const percent = getMasteryPercent(student);
+    const color = getMasteryColor(student);
+    return {
+        background: `conic-gradient(${color} ${percent}%, #e5e7eb ${percent}% 100%)`,
+    };
+};
 </script>
 
 <template>
@@ -282,17 +303,42 @@ const getScoreColor = (score) => {
                             </p>
                         </div>
                     </div>
-                    <Link
-                        :href="
-                            route('instructor.assessments.history.student', [
-                                assessment.id,
-                                student.student_id,
-                            ])
-                        "
-                        class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-accent-primary rounded-lg hover:bg-accent-muted transition-colors duration-150"
-                    >
-                        View
-                    </Link>
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-2">
+                            <div
+                                class="relative w-14 h-14 rounded-full p-[4px]"
+                                :style="getMasteryRingStyle(student)"
+                            >
+                                <div
+                                    class="w-full h-full rounded-full bg-white dark:bg-gray-900 flex items-center justify-center"
+                                >
+                                    <span
+                                        class="text-[11px] font-bold text-text-primary dark:text-text-inverted"
+                                    >
+                                        {{ Math.round(getMasteryPercent(student)) }}%
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="text-xs leading-tight">
+                                <div
+                                    class="font-semibold text-text-primary dark:text-text-inverted"
+                                >
+                                    Mastery
+                                </div>
+                            </div>
+                        </div>
+                        <Link
+                            :href="
+                                route('instructor.assessments.history.student', [
+                                    assessment.id,
+                                    student.student_id,
+                                ])
+                            "
+                            class="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-accent-primary rounded-lg hover:bg-accent-muted transition-colors duration-150"
+                        >
+                            View
+                        </Link>
+                    </div>
                 </div>
             </div>
         </div>
