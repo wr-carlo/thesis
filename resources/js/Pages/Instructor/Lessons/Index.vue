@@ -120,8 +120,20 @@
                     <div
                         v-for="lesson in lessons.data"
                         :key="lesson.id"
-                        class="group bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md transition-all duration-200"
+                        class="group bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden hover:border-gray-300 dark:hover:border-gray-600 hover:shadow-md transition-all duration-200"
                     >
+                        <div
+                            class="h-28 p-4 flex items-start justify-end"
+                            :style="getLessonHeaderStyle(lesson.id)"
+                        >
+                            <span
+                                class="text-xs text-gray-700 bg-white/80 px-2.5 py-1 rounded-full"
+                            >
+                                {{ formatDate(lesson.created_at) }}
+                            </span>
+                        </div>
+
+                        <div class="p-6">
                         <!-- Card Header -->
                         <div class="mb-4">
                             <div class="flex items-center justify-between">
@@ -130,12 +142,6 @@
                                 >
                                     {{ lesson.title }}
                                 </h3>
-
-                                <span
-                                class="text-xs text-gray-500 dark:text-gray-400"
-                                >
-                                    {{ formatDate(lesson.created_at) }}
-                                </span>
                             </div>
                             <p class="text-sm text-gray-500 dark:text-gray-400">
                                 {{ lesson.subject?.name || "No subject" }}
@@ -287,6 +293,7 @@
                                 </button>
                             </div>
                         </div>
+                        </div>
                     </div>
                 </div>
 
@@ -412,6 +419,28 @@ const formatDate = (date) => {
         month: "short",
         day: "numeric",
     });
+};
+
+const lessonCardImages = [
+    "/images/images/card-images/card-picture-1.png",
+    "/images/images/card-images/card-picture-2.png",
+    "/images/images/card-images/card-picture-3.png",
+    "/images/images/card-images/card-picture-4.png",
+    "/images/images/card-images/card-picture-5.png",
+];
+
+const getLessonHeaderStyle = (lessonId) => {
+    const id = Number(lessonId);
+    const imageIndex = Number.isFinite(id)
+        ? Math.abs(id) % lessonCardImages.length
+        : 0;
+    const imageUrl = lessonCardImages[imageIndex];
+
+    return {
+        backgroundImage: `linear-gradient(to right, rgba(255, 255, 255, 0.18), rgba(255, 255, 255, 0.08)), url(${imageUrl})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+    };
 };
 
 const deleteLesson = (id) => {
