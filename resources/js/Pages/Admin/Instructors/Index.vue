@@ -7,7 +7,7 @@ import InputLabel from "@/Components/InputLabel.vue";
 import TextInput from "@/Components/TextInput.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import ConfirmationModal from "@/Components/ConfirmationModal.vue";
-import { Head, Link, router, useForm, usePage } from "@inertiajs/vue3";
+import { Head, Link, router, useForm } from "@inertiajs/vue3";
 import { ref, watch, computed } from "vue";
 import { useToast } from "@/Stores/useToast";
 
@@ -17,7 +17,6 @@ const props = defineProps({
     filters: Object,
 });
 
-const page = usePage();
 const { success, error, warning } = useToast();
 
 const showCreateModal = ref(false);
@@ -32,34 +31,6 @@ const importErrors = ref([]);
 let searchTimeout = null;
 
 const hasInstructors = computed(() => props.instructors.data?.length > 0);
-
-// Watch for flash messages
-watch(
-    () => page.props.flash,
-    (flash) => {
-        if (flash?.message) {
-            if (flash.type === "success") {
-                success(flash.message);
-                if (flash.errors && flash.errors.length > 0) {
-                    importErrors.value = flash.errors;
-                }
-            } else if (flash.type === "warning") {
-                warning(flash.message);
-                if (flash.errors) {
-                    importErrors.value = flash.errors;
-                }
-            } else if (flash.type === "error") {
-                error(flash.message);
-                if (flash.errors) {
-                    importErrors.value = flash.errors;
-                }
-            }
-        } else if (flash?.success) {
-            success(flash.success);
-        }
-    },
-    { deep: true }
-);
 
 // Reactive search with debouncing
 watch(searchQuery, (newValue) => {

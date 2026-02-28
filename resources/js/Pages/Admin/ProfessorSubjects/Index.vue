@@ -5,8 +5,8 @@ import InputLabel from "@/Components/InputLabel.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import Modal from "@/Components/Modal.vue";
-import { Head, Link, router, useForm, usePage } from "@inertiajs/vue3";
-import { watch, ref, computed } from "vue";
+import { Head, Link, router, useForm } from "@inertiajs/vue3";
+import { ref, computed } from "vue";
 import { useToast } from "@/Stores/useToast";
 import ConfirmationModal from "@/Components/ConfirmationModal.vue";
 
@@ -21,23 +21,12 @@ const form = useForm({
     subject_id: "",
 });
 
-const page = usePage();
 const { success, error } = useToast();
 const updateForms = {};
 const editingId = ref(null);
 const showCreateModal = ref(false);
 const showDeleteModal = ref(false);
 const assignmentToDelete = ref(null);
-
-// Watch for flash messages
-watch(
-    () => page.props.flash?.success,
-    (message) => {
-        if (message) {
-            success(message);
-        }
-    }
-);
 
 const hasAssignments = computed(() => props.assignments.data?.length > 0);
 

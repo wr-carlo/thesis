@@ -306,7 +306,7 @@ const getInstructorDepartmentStyle = (departmentName) => {
                             v-for="instructor in subject.instructors"
                             :key="instructor.id"
                             :class="[
-                                'flex items-center justify-between p-2 rounded-lg transition-colors border',
+                                'flex items-center justify-between p-2 rounded-lg transition-colors border backdrop-blur-sm bg-black/10',
                                 instructor.is_selected
                                     ? 'border-accent-primary/40 dark:border-accent-primary/50 ring-1 ring-accent-primary/20'
                                     : `border-transparent ${getInstructorDepartmentClasses(instructor.department_name)}`,
@@ -318,8 +318,8 @@ const getInstructorDepartmentStyle = (departmentName) => {
                             "
                         >
                             <div class="flex items-center gap-2 flex-1 min-w-0">
-                                <span class="text-sm truncate text-white"
-                                    
+                                <span class="text-sm truncate "
+                                    :class="instructor.is_selected ? 'text-green-500' : 'text-white'"
                                 >
                                     {{ instructor.name }}
                                 </span>

@@ -1,6 +1,10 @@
 import defaultTheme from "tailwindcss/defaultTheme";
 import forms from "@tailwindcss/forms";
 
+const withOpacity = (variableName) => {
+    return `rgb(var(${variableName}) / <alpha-value>)`;
+};
+
 /** @type {import('tailwindcss').Config} */
 export default {
     content: [
@@ -16,23 +20,23 @@ export default {
         extend: {
             colors: {
                 surface: {
-                    DEFAULT: "#ffffff",
-                    muted: "#f5f5f5",
-                    dark: "#0f172a",
-                    "dark-muted": "#111827",
+                    DEFAULT: withOpacity("--color-surface"),
+                    muted: withOpacity("--color-surface-muted"),
+                    dark: withOpacity("--color-surface-dark"),
+                    "dark-muted": withOpacity("--color-surface-dark-muted"),
                 },
                 text: {
-                    primary: "#0f172a",
-                    secondary: "#475569",
-                    inverted: "#e0e0e0",
+                    primary: withOpacity("--color-text-primary"),
+                    secondary: withOpacity("--color-text-secondary"),
+                    inverted: withOpacity("--color-text-inverted"),
                 },
                 border: {
-                    light: "#e5e7eb",
-                    dark: "#1f2937",
+                    light: withOpacity("--color-border-light"),
+                    dark: withOpacity("--color-border-dark"),
                 },
                 accent: {
-                    primary: "#4f46e5",
-                    muted: "#6366f1",
+                    primary: withOpacity("--color-accent-primary"),
+                    muted: withOpacity("--color-accent-muted"),
                 },
             },
             fontFamily: {

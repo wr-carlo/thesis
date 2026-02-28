@@ -4,9 +4,45 @@
 
 @layer base {
     :root {
+        /* Surface colors */
+        --color-surface: 255 255 255;
+        --color-surface-muted: 245 245 245;
+        --color-surface-dark: 15 23 42;
+        --color-surface-dark-muted: 17 24 39;
+
+        /* Text colors */
+        --color-text-primary: 15 23 42;
+        --color-text-secondary: 71 85 105;
+        --color-text-inverted: 224 224 224;
+
+        /* Border colors */
+        --color-border-light: 229 231 235;
+        --color-border-dark: 31 41 55;
+
+        /* Accent colors */
+        --color-accent-primary: 79 70 229;
+        --color-accent-muted: 99 102 241;
+
         color-scheme: light;
     }
+
     .dark {
+        /* Dark mode overrides */
+        --color-surface: 15 23 42;
+        --color-surface-muted: 17 24 39;
+        --color-surface-dark: 15 23 42;
+        --color-surface-dark-muted: 17 24 39;
+
+        --color-text-primary: 224 224 224;
+        --color-text-secondary: 148 163 184;
+        --color-text-inverted: 241 245 249;
+
+        --color-border-light: 55 65 81;
+        --color-border-dark: 31 41 55;
+
+        --color-accent-primary: 99 102 241;
+        --color-accent-muted: 129 140 248;
+
         color-scheme: dark;
     }
 }
