@@ -208,7 +208,7 @@ onUnmounted(() => {
         >
             <div
                 v-if="isOpen"
-                class="absolute -right-30 bottom-full mb-2 w-80 bg-white dark:bg-surface-dark rounded-lg shadow-lg border border-border-light dark:border-border-dark z-50 max-h-[28rem] overflow-hidden flex flex-col"
+                class="absolute top-full mt-2 right-0 w-80 bg-white dark:bg-surface-dark rounded-lg shadow-lg border border-border-light dark:border-border-dark z-50 max-h-[28rem] overflow-hidden flex flex-col"
                 @click.stop
             >
                 <!-- Header -->

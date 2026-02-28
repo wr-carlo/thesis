@@ -31,8 +31,15 @@ const userSubItems = [
     { name: "Instructors", route: "admin.instructors.index" },
 ];
 
-const settingsItem = { name: "Settings", route: "admin.settings" };
 const profileName = computed(() => page.props.auth?.user?.name || "Admin");
+const profileInitials = computed(() => {
+    const name = profileName.value;
+    const parts = name.split(" ").filter(Boolean);
+    if (parts.length >= 2) {
+        return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+});
 
 // Check if current route is a users sub-route
 const isUsersRoute = computed(() => {
@@ -167,7 +174,7 @@ onBeforeUnmount(() => {
             </aside>
 
             <!-- Main -->
-            <div class="flex-1 flex flex-col  sm:pl-64 main-content">
+            <div class="flex-1 flex flex-col sm:pl-64 main-content">
                 <header
                     class="h-16 bg-white dark:bg-surface-dark-muted border-b border-border-light dark:border-border-dark flex items-center px-4 sm:px-6 lg:px-8 justify-between"
                 >
@@ -182,60 +189,48 @@ onBeforeUnmount(() => {
                         <h1 class="text-base font-semibold">Admin Panel</h1>
                     </div>
                     <div class="flex items-center gap-3">
+                        <!-- Theme Toggle -->
                         <button
                             type="button"
-                            class="relative inline-flex h-8 w-16 items-center rounded-full border border-border-light dark:border-border-dark bg-surface-muted dark:bg-surface-dark transition-colors duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
-                            :aria-label="
-                                theme.theme === 'dark'
-                                    ? 'Switch to light mode'
-                                    : 'Switch to dark mode'
-                            "
+                            class="theme-toggle relative inline-flex h-8 w-16 items-center rounded-full border border-border-light dark:border-border-dark transition-colors duration-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
+                            :class="theme.theme === 'dark' ? 'bg-indigo-950 border-indigo-800' : 'bg-amber-100 border-amber-200'"
+                            :aria-label="theme.theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'"
                             @click="toggleTheme()"
                         >
                             <span
-                                class="absolute left-2 text-[11px] transition-opacity duration-300"
-                                :class="
-                                    theme.theme === 'dark'
-                                        ? 'opacity-100'
-                                        : 'opacity-40'
-                                "
+                                class="absolute left-2 text-[11px] transition-all duration-500"
+                                :class="theme.theme === 'dark' ? 'opacity-100 scale-110' : 'opacity-30 scale-75'"
                                 aria-hidden="true"
-                            >
-                                🌙
-                            </span>
+                            >🌙</span>
                             <span
-                                class="absolute right-2 text-[11px] transition-opacity duration-300"
-                                :class="
-                                    theme.theme === 'dark'
-                                        ? 'opacity-40'
-                                        : 'opacity-100'
-                                "
+                                class="absolute right-2 text-[11px] transition-all duration-500"
+                                :class="theme.theme === 'dark' ? 'opacity-30 scale-75' : 'opacity-100 scale-110'"
                                 aria-hidden="true"
-                            >
-                                ☀️
-                            </span>
+                            >☀️</span>
                             <span
-                                class="inline-block h-6 w-6 rounded-full bg-white dark:bg-surface-dark-muted shadow-sm transform transition-transform duration-300"
-                                :class="
+                                class="theme-knob inline-block h-6 w-6 rounded-full shadow-md transition-all duration-500 ease-[cubic-bezier(0.68,-0.55,0.265,1.55)]"
+                                :class="[
                                     theme.theme === 'dark'
-                                        ? 'translate-x-1'
-                                        : 'translate-x-9'
-                                "
+                                        ? 'translate-x-1 bg-indigo-400 rotate-[360deg]'
+                                        : 'translate-x-9 bg-amber-400 rotate-0',
+                                ]"
                             />
                         </button>
+
+                        <!-- Profile Dropdown -->
                         <div class="relative" ref="profileMenuRef">
                             <button
                                 type="button"
-                                class="inline-flex items-center gap-2 rounded-lg px-2 py-1.5 hover:bg-surface-muted dark:hover:bg-surface-dark transition-colors"
+                                class="flex items-center gap-2 p-1.5 rounded-lg hover:bg-surface-muted dark:hover:bg-surface-dark transition-colors"
                                 @click.stop="profileMenuOpen = !profileMenuOpen"
                             >
-                                <span
-                                    class="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-semibold text-sm"
+                                <div
+                                    class="w-8 h-8 rounded-full bg-accent-primary text-white flex items-center justify-center text-sm font-bold"
                                 >
-                                    {{ profileName.charAt(0).toUpperCase() }}
-                                </span>
+                                    {{ profileInitials }}
+                                </div>
                                 <svg
-                                    class="h-4 w-4 text-text-secondary transition-transform"
+                                    class="w-4 h-4 text-text-secondary transition-transform"
                                     :class="{ 'rotate-180': profileMenuOpen }"
                                     fill="none"
                                     stroke="currentColor"
@@ -250,25 +245,63 @@ onBeforeUnmount(() => {
                                 </svg>
                             </button>
 
-                            <div
-                                v-if="profileMenuOpen"
-                                class="absolute right-0 mt-2 w-44 rounded-md border border-border-light dark:border-border-dark bg-white dark:bg-surface-dark-muted shadow-lg py-1 z-50"
+                            <!-- Profile Dropdown Menu -->
+                            <Transition
+                                enter-active-class="transition ease-out duration-100"
+                                enter-from-class="opacity-0 scale-95"
+                                enter-to-class="opacity-100 scale-100"
+                                leave-active-class="transition ease-in duration-75"
+                                leave-from-class="opacity-100 scale-100"
+                                leave-to-class="opacity-0 scale-95"
                             >
-                                <Link
-                                    :href="route(settingsItem.route)"
-                                    class="block px-4 py-2 text-sm text-text-secondary hover:bg-surface-muted hover:text-text-primary dark:hover:bg-surface-dark dark:hover:text-text-inverted"
+                                <div
+                                    v-if="profileMenuOpen"
+                                    class="absolute right-0 mt-2 w-56 bg-white dark:bg-surface-dark rounded-lg shadow-lg border border-border-light dark:border-border-dark z-50 overflow-hidden"
                                 >
-                                    Settings
-                                </Link>
-                                <Link
-                                    :href="route('logout')"
-                                    method="post"
-                                    as="button"
-                                    class="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-surface-muted dark:hover:bg-surface-dark"
-                                >
-                                    Logout
-                                </Link>
-                            </div>
+                                    <!-- User Info -->
+                                    <div class="px-4 py-3 border-b border-border-light dark:border-border-dark">
+                                        <p class="text-sm font-semibold text-text-primary dark:text-text-inverted">
+                                            {{ $page.props.auth.user.name }}
+                                        </p>
+                                        <p class="text-xs text-text-secondary capitalize mt-0.5">
+                                            {{ $page.props.auth.user.role }}
+                                        </p>
+                                    </div>
+
+                                    <!-- Menu Items -->
+                                    <div class="py-1">
+                                        <Link
+                                            :href="route('admin.settings')"
+                                            @click="profileMenuOpen = false"
+                                            class="flex items-center gap-3 px-4 py-2.5 text-sm text-text-primary dark:text-text-inverted hover:bg-surface-muted dark:hover:bg-surface-dark-muted transition-colors"
+                                        >
+                                            <svg class="w-4 h-4 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                            Settings
+                                        </Link>
+
+                                        <div class="border-t border-border-light dark:border-border-dark my-1"></div>
+
+                                        <Link
+                                            :href="route('logout')"
+                                            method="post"
+                                            as="button"
+                                            @click="profileMenuOpen = false"
+                                            class="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                                        >
+                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                                            </svg>
+                                            Logout
+                                        </Link>
+                                    </div>
+                                </div>
+                            </Transition>
                         </div>
                     </div>
                 </header>
