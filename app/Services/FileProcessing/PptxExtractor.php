@@ -98,18 +98,10 @@ class PptxExtractor implements FileExtractorInterface
                     if (preg_match('#ppt/slides/slide\d+\.xml$#', $filename)) {
                         $slideXml = $zip->getFromIndex($i);
                         if ($slideXml !== false) {
-                            // Check for geometric shapes and drawings in PPTX XML:
-                            // - <a:blip> - images
-                            // - <a:custGeom> or <a:prstGeom> - geometric shapes (rectangles, circles, etc.)
-                            // - <p:cNvPr> with specific types for shapes
-                            // - <p:sp> with geometry (geometric shapes)
-                            // - <p:pic> - pictures
-                            // - <p:mediaFile> or <p:audioFile> - media
-                            // - <p:cxnSp> - connector lines
-                            // - <p:grpSp> - group shapes (may contain media)
-
-                            // Check for geometric shapes: <a:prstGeom> (preset geometry) or <a:custGeom> (custom geometry)
-                            if (preg_match('/<a:prstGeom|<a:custGeom|<a:blip|<p:pic|<p:mediaFile|<p:audioFile|<p:cxnSp/i', $slideXml)) {
+                            // Only check for actual images and media
+                            // Removed: <a:prstGeom>, <a:custGeom> (present in text boxes, causes false positives)
+                            // Removed: <p:cxnSp> (connector lines, not actual shapes/images)
+                            if (preg_match('/<a:blip|<p:pic|<p:mediaFile|<p:audioFile/i', $slideXml)) {
                                 $zip->close();
                                 return false;
                             }
@@ -167,20 +159,7 @@ class PptxExtractor implements FileExtractorInterface
                         return false;
                     }
 
-                    // Check for group shapes - they might contain media
-                    if (str_contains($shapeClass, 'Group')) {
-                        return false;
-                    }
 
-                    // Check for charts - visual elements
-                    if (str_contains($shapeClass, 'Chart')) {
-                        return false;
-                    }
-
-                    // Check for OLE objects (embedded objects)
-                    if (str_contains($shapeClass, 'OLE') || str_contains($shapeClass, 'Object')) {
-                        return false;
-                    }
                 }
             }
 

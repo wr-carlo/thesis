@@ -129,37 +129,12 @@ class DocxExtractor implements FileExtractorInterface
             return false;
         }
 
-        // Check for shapes - multiple possible class names and patterns
-        // PhpWord may use: Shape, TextBox, OLEObject, etc.
-        if (
-            str_contains($elementClass, 'Shape') ||
-            str_contains($elementClass, 'TextBox') ||
-            str_contains($elementClass, 'OLEObject') ||
-            str_contains($elementClass, 'Object') ||
-            str_contains($elementClass, 'Chart')
-        ) {
+        // Check for shapes
+        if (str_contains($elementClass, 'Shape')) {
             return false;
         }
 
-        // Also check using instanceof for better detection
-        // @phpstan-ignore-next-line
-        if (
-            $element instanceof \PhpOffice\PhpWord\Element\Shape ||
-            // @phpstan-ignore-next-line
-            $element instanceof \PhpOffice\PhpWord\Element\TextRun
-        ) {
-            // Check if TextRun contains non-text elements (like images/shapes)
-            if (method_exists($element, 'getElements')) {
-                // @phpstan-ignore-next-line
-                $childElements = $element->getElements();
-                foreach ($childElements as $childElement) {
-                    if (!$this->checkElementForMedia($childElement)) {
-                        return false;
-                    }
-                }
-            }
-            // Continue to check nested elements below
-        }
+
 
         // Recursively check nested elements
         if (method_exists($element, 'getElements')) {
@@ -186,12 +161,6 @@ class DocxExtractor implements FileExtractorInterface
             }
         }
 
-        // Check for embedded objects or other media types
-        // Check if element has methods that suggest it's a shape/object
-        if (method_exists($element, 'getSource')) {
-            // If it has a source, it's likely an embedded object/image/shape
-            return false;
-        }
 
         return true;
     }
@@ -219,7 +188,10 @@ class DocxExtractor implements FileExtractorInterface
                     // - <wp:anchor> or <wp:inline> - drawing anchors
                     // - <a:graphic> - graphic elements
                     // - <v:shape> or <v:imagedata> - legacy shapes/images
-                    if (preg_match('/<w:drawing|<wp:anchor|<wp:inline|<a:graphic|<v:shape|<v:imagedata|<o:OLEObject|<mc:AlternateContent/i', $documentXml)) {
+                    // Only check for actual drawing/image/shape elements
+                    // Removed: <o:OLEObject> (non-visual embedded objects)
+                    // Removed: <mc:AlternateContent> (compatibility markup, present in most modern DOCX)
+                    if (preg_match('/<w:drawing|<wp:anchor|<wp:inline|<a:graphic|<v:shape|<v:imagedata/i', $documentXml)) {
                         $zip->close();
                         return false;
                     }
