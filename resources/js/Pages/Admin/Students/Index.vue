@@ -7,6 +7,7 @@ import InputLabel from "@/Components/InputLabel.vue";
 import TextInput from "@/Components/TextInput.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import ConfirmationModal from "@/Components/ConfirmationModal.vue";
+import SearchableSelect from "@/Components/SearchableSelect.vue";
 import { Head, Link, router, useForm } from "@inertiajs/vue3";
 import { ref, watch, computed } from "vue";
 import { useToast } from "@/Stores/useToast";
@@ -67,6 +68,13 @@ const importForm = useForm({
     file: null,
     section_id: "",
 });
+
+const sectionOptions = computed(() =>
+    props.sections.map((s) => ({
+        value: s.id,
+        label: s.name,
+    }))
+);
 
 const openCreateModal = () => {
     showCreateModal.value = true;
@@ -614,25 +622,14 @@ const formatDate = (dateString) => {
                     </div>
                     <div>
                         <InputLabel
-                            for="create_section_id"
                             value="Section"
                             class="mb-2"
                         />
-                        <select
-                            id="create_section_id"
+                        <SearchableSelect
                             v-model="createForm.section_id"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                            required
-                        >
-                            <option value="" disabled>Select section</option>
-                            <option
-                                v-for="section in props.sections"
-                                :key="section.id"
-                                :value="section.id"
-                            >
-                                {{ section.name }}
-                            </option>
-                        </select>
+                            :options="sectionOptions"
+                            placeholder="Search and select section..."
+                        />
                         <InputError
                             class="mt-2"
                             :message="createForm.errors.section_id"
@@ -727,24 +724,14 @@ const formatDate = (dateString) => {
                     </div>
                     <div>
                         <InputLabel
-                            for="edit_section_id"
                             value="Section"
                             class="mb-2"
                         />
-                        <select
-                            id="edit_section_id"
+                        <SearchableSelect
                             v-model="editForm.section_id"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                        >
-                            <option value="" disabled>Select section</option>
-                            <option
-                                v-for="section in props.sections"
-                                :key="section.id"
-                                :value="section.id"
-                            >
-                                {{ section.name }}
-                            </option>
-                        </select>
+                            :options="sectionOptions"
+                            placeholder="Search and select section..."
+                        />
                         <InputError
                             class="mt-2"
                             :message="editForm.errors.section_id"
@@ -915,27 +902,14 @@ const formatDate = (dateString) => {
                     <!-- Section Selection -->
                     <div>
                         <InputLabel
-                            for="import_section_id"
                             value="Section *"
                             class="mb-2"
                         />
-                        <select
-                            id="import_section_id"
+                        <SearchableSelect
                             v-model="importForm.section_id"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                            required
-                        >
-                            <option value="" disabled>
-                                Select section for all students
-                            </option>
-                            <option
-                                v-for="section in props.sections"
-                                :key="section.id"
-                                :value="section.id"
-                            >
-                                {{ section.name }}
-                            </option>
-                        </select>
+                            :options="sectionOptions"
+                            placeholder="Search and select section..."
+                        />
                         <InputError
                             class="mt-2"
                             :message="importForm.errors.section_id"

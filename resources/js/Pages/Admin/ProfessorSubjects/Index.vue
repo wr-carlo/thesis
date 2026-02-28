@@ -4,31 +4,79 @@ import InputError from "@/Components/InputError.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
+import SearchableSelect from "@/Components/SearchableSelect.vue";
 import Modal from "@/Components/Modal.vue";
-import { Head, Link, router, useForm } from "@inertiajs/vue3";
+import { Head, router, useForm } from "@inertiajs/vue3";
 import { ref, computed } from "vue";
 import { useToast } from "@/Stores/useToast";
 import ConfirmationModal from "@/Components/ConfirmationModal.vue";
 
 const props = defineProps({
-    assignments: Object,
-    professors: Array,
     subjects: Array,
+    professors: Array,
 });
 
-const form = useForm({
+const { success, error } = useToast();
+
+// Search
+const searchQuery = ref("");
+const filteredSubjects = computed(() => {
+    if (!searchQuery.value) return props.subjects;
+    const q = searchQuery.value.toLowerCase();
+    return props.subjects.filter(
+        (s) =>
+            s.name.toLowerCase().includes(q) ||
+            s.code.toLowerCase().includes(q) ||
+            s.assignments.some((a) => a.professor_name.toLowerCase().includes(q))
+    );
+});
+
+// Assign modal
+const showAssignModal = ref(false);
+const assignSubjectName = ref("");
+const assignForm = useForm({
     professor_id: "",
     subject_id: "",
 });
 
-const { success, error } = useToast();
-const updateForms = {};
-const editingId = ref(null);
-const showCreateModal = ref(false);
+// Options for the SearchableSelect
+const professorOptions = computed(() =>
+    props.professors.map((p) => ({
+        value: p.id,
+        label: p.user?.name || "Unknown",
+        sublabel: p.department?.name || "No Department",
+    }))
+);
+
+const openAssignModal = (subject) => {
+    assignSubjectName.value = `${subject.code} — ${subject.name}`;
+    assignForm.subject_id = subject.id;
+    assignForm.professor_id = "";
+    showAssignModal.value = true;
+};
+
+const closeAssignModal = () => {
+    showAssignModal.value = false;
+    assignForm.reset();
+    assignForm.clearErrors();
+};
+
+const submitAssign = () => {
+    assignForm.post(route("admin.assignments.store"), {
+        preserveScroll: true,
+        onSuccess: () => {
+            closeAssignModal();
+            success("Instructor assigned successfully");
+        },
+        onError: () => {
+            error("Failed to assign instructor");
+        },
+    });
+};
+
+// Remove
 const showDeleteModal = ref(false);
 const assignmentToDelete = ref(null);
-
-const hasAssignments = computed(() => props.assignments.data?.length > 0);
 
 const openDeleteModal = (id) => {
     assignmentToDelete.value = id;
@@ -47,75 +95,24 @@ const confirmDelete = () => {
             preserveScroll: true,
             onSuccess: () => {
                 closeDeleteModal();
-                success("Assignment removed successfully");
+                success("Instructor removed successfully");
             },
             onError: () => {
-                error("Failed to remove assignment");
+                error("Failed to remove instructor");
             },
         }
     );
 };
 
-const openCreateModal = () => {
-    showCreateModal.value = true;
-};
-
-const closeCreateModal = () => {
-    showCreateModal.value = false;
-    form.reset();
-    form.clearErrors();
-};
-
-const submitCreate = () => {
-    form.post(route("admin.assignments.store"), {
-        preserveScroll: true,
-        onSuccess: () => {
-            closeCreateModal();
-            success("Assignment created successfully");
-        },
-        onError: () => {
-            error("Failed to create assignment");
-        },
-    });
-};
-
-const startEdit = (row) => {
-    editingId.value = row.id;
-    if (!updateForms[row.id]) {
-        updateForms[row.id] = useForm({
-            professor_id: row.professor_id,
-            subject_id: row.subject_id,
-        });
-    }
-};
-
-const cancelEdit = (id) => {
-    editingId.value = null;
-    if (updateForms[id]) {
-        updateForms[id].reset();
-        updateForms[id].clearErrors();
-    }
-};
-
-const saveEdit = (id, row) => {
-    if (!updateForms[id]) return;
-
-    updateForms[id].put(route("admin.assignments.update", id), {
-        preserveScroll: true,
-        onSuccess: () => {
-            editingId.value = null;
-            success("Assignment updated successfully");
-        },
-        onError: () => {
-            error("Failed to update assignment");
-        },
-    });
+// Available professors for a subject (exclude already assigned)
+const availableProfessors = (subject) => {
+    const assignedIds = subject.assignments.map((a) => a.professor_id);
+    return props.professors.filter((p) => !assignedIds.includes(p.id));
 };
 
 const formatDate = (dateString) => {
     if (!dateString) return "";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-US", {
+    return new Date(dateString).toLocaleDateString("en-US", {
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -127,49 +124,21 @@ const formatDate = (dateString) => {
     <AdminLayout>
         <Head title="Assignments" />
 
-        <!-- Header Section -->
+        <!-- Header -->
         <div class="mb-8">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h1
-                        class="text-2xl font-semibold text-gray-900 dark:text-white mb-1"
-                    >
-                        Assignments
-                    </h1>
-                    <p class="text-sm text-gray-500 dark:text-gray-400">
-                        Assign instructors to subjects
-                    </p>
-                </div>
-                <button
-                    @click="openCreateModal"
-                    class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200"
-                >
-                    <svg
-                        class="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
-                        />
-                    </svg>
-                    Assign Instructor
-                </button>
-            </div>
+            <h1 class="text-2xl font-semibold text-gray-900 dark:text-white mb-1">
+                Assignments
+            </h1>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+                Manage instructor assignments per subject
+            </p>
         </div>
 
-        <!-- Assignments List -->
-        <div
-            class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden"
-        >
-            <!-- Empty State -->
-            <div v-if="!hasAssignments" class="p-12 text-center">
+        <!-- Search -->
+        <div class="mb-6">
+            <div class="relative max-w-md">
                 <svg
-                    class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500 mb-4"
+                    class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -178,436 +147,54 @@ const formatDate = (dateString) => {
                         stroke-linecap="round"
                         stroke-linejoin="round"
                         stroke-width="2"
-                        d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                     />
                 </svg>
-                <h3
-                    class="text-sm font-medium text-gray-900 dark:text-white mb-1"
-                >
-                    No assignments
-                </h3>
-                <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    Get started by assigning an instructor to a subject.
-                </p>
-                <button
-                    @click="openCreateModal"
-                    class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200"
-                >
-                    <svg
-                        class="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                    >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"
-                        />
-                    </svg>
-                    Assign Instructor
-                </button>
-            </div>
-
-            <!-- Assignments Table -->
-            <div v-else class="divide-y divide-gray-200 dark:divide-gray-700">
-                <div
-                    v-for="assignment in props.assignments.data"
-                    :key="assignment.id"
-                    class="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors duration-150"
-                >
-                    <div class="flex items-center justify-between gap-4">
-                        <!-- Assignment Info -->
-                        <div class="flex-1 min-w-0">
-                            <div
-                                v-if="editingId !== assignment.id"
-                                class="flex items-center gap-4"
-                            >
-                                <div class="flex-shrink-0">
-                                    <div
-                                        class="w-12 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center"
-                                    >
-                                        <svg
-                                            class="w-6 h-6 text-blue-600 dark:text-blue-400"
-                                            fill="none"
-                                            stroke="currentColor"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <path
-                                                stroke-linecap="round"
-                                                stroke-linejoin="round"
-                                                stroke-width="2"
-                                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"
-                                            />
-                                        </svg>
-                                    </div>
-                                </div>
-                                <div class="flex-1 min-w-0">
-                                    <div class="space-y-2">
-                                        <!-- Instructor Name -->
-                                        <div>
-                                            <p
-                                                class="text-base font-medium text-gray-900 dark:text-white truncate"
-                                            >
-                                                {{
-                                                    assignment.professor?.user
-                                                        ?.name ||
-                                                    "Unknown Instructor"
-                                                }}
-                                            </p>
-                                        </div>
-
-                                        <!-- Department and Subject Info -->
-                                        <div
-                                            class="flex items-center gap-3 flex-wrap"
-                                        >
-                                            <!-- Department Badge -->
-                                            <div
-                                                class="flex items-center gap-2"
-                                            >
-                                                <span
-                                                    class="text-xs font-medium text-gray-500 dark:text-gray-400"
-                                                >
-                                                    Department:
-                                                </span>
-                                                <span
-                                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300"
-                                                >
-                                                    {{
-                                                        assignment.professor
-                                                            ?.department
-                                                            ?.name ||
-                                                        "No Department"
-                                                    }}
-                                                </span>
-                                            </div>
-
-                                            <span
-                                                class="text-gray-400 dark:text-gray-500"
-                                            >
-                                                •
-                                            </span>
-
-                                            <!-- Subject Info -->
-                                            <div
-                                                class="flex items-center gap-2"
-                                            >
-                                                <span
-                                                    class="text-xs font-medium text-gray-500 dark:text-gray-400"
-                                                >
-                                                    Subject:
-                                                </span>
-                                                <span
-                                                    class="text-sm font-medium text-gray-700 dark:text-gray-300"
-                                                >
-                                                    {{
-                                                        assignment.subject
-                                                            ?.code || "N/A"
-                                                    }}
-                                                </span>
-                                                <span
-                                                    class="text-sm text-gray-600 dark:text-gray-400"
-                                                >
-                                                    {{
-                                                        assignment.subject
-                                                            ?.name ||
-                                                        "Unknown Subject"
-                                                    }}
-                                                </span>
-                                            </div>
-                                        </div>
-
-                                        <!-- Date -->
-                                        <p
-                                            v-if="assignment.created_at"
-                                            class="text-xs text-gray-500 dark:text-gray-400"
-                                        >
-                                            Assigned
-                                            {{
-                                                formatDate(
-                                                    assignment.created_at
-                                                )
-                                            }}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Edit Mode -->
-                            <div v-else class="space-y-3">
-                                <div>
-                                    <label
-                                        class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
-                                    >
-                                        Instructor
-                                    </label>
-                                    <select
-                                        v-model="
-                                            (updateForms[assignment.id] ||=
-                                                useForm({
-                                                    professor_id:
-                                                        assignment.professor_id,
-                                                    subject_id:
-                                                        assignment.subject_id,
-                                                })).professor_id
-                                        "
-                                        class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                                        @keyup.enter="
-                                            saveEdit(assignment.id, assignment)
-                                        "
-                                        @keyup.esc="cancelEdit(assignment.id)"
-                                        autofocus
-                                    >
-                                        <option value="" disabled>
-                                            Select instructor
-                                        </option>
-                                        <option
-                                            v-for="prof in props.professors"
-                                            :key="prof.id"
-                                            :value="prof.id"
-                                        >
-                                            {{ prof.user?.name }} ({{
-                                                prof.department?.name ||
-                                                "No Department"
-                                            }})
-                                        </option>
-                                    </select>
-                                    <InputError
-                                        class="text-xs mt-1"
-                                        :message="
-                                            updateForms[assignment.id]?.errors
-                                                ?.professor_id
-                                        "
-                                    />
-                                </div>
-                                <div>
-                                    <label
-                                        class="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1"
-                                    >
-                                        Subject
-                                    </label>
-                                    <select
-                                        v-model="
-                                            (updateForms[assignment.id] ||=
-                                                useForm({
-                                                    professor_id:
-                                                        assignment.professor_id,
-                                                    subject_id:
-                                                        assignment.subject_id,
-                                                })).subject_id
-                                        "
-                                        class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                                        @keyup.enter="
-                                            saveEdit(assignment.id, assignment)
-                                        "
-                                        @keyup.esc="cancelEdit(assignment.id)"
-                                    >
-                                        <option value="" disabled>
-                                            Select subject
-                                        </option>
-                                        <option
-                                            v-for="sub in props.subjects"
-                                            :key="sub.id"
-                                            :value="sub.id"
-                                        >
-                                            {{ sub.code }} - {{ sub.name }}
-                                        </option>
-                                    </select>
-                                    <InputError
-                                        class="text-xs mt-1"
-                                        :message="
-                                            updateForms[assignment.id]?.errors
-                                                ?.subject_id
-                                        "
-                                    />
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Actions -->
-                        <div class="flex items-center gap-2">
-                            <template v-if="editingId !== assignment.id">
-                                <button
-                                    @click="startEdit(assignment)"
-                                    class="p-2 text-gray-600 dark:text-gray-400 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors duration-150"
-                                    title="Edit Assignment"
-                                >
-                                    <svg
-                                        class="w-5 h-5"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="2"
-                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
-                                        />
-                                    </svg>
-                                </button>
-                                <button
-                                    @click="openDeleteModal(assignment.id)"
-                                    class="p-2 text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors duration-150"
-                                    title="Remove Assignment"
-                                >
-                                    <svg
-                                        class="w-5 h-5"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="2"
-                                            d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
-                                        />
-                                    </svg>
-                                </button>
-                            </template>
-                            <template v-else>
-                                <button
-                                    @click="saveEdit(assignment.id, assignment)"
-                                    :disabled="
-                                        updateForms[assignment.id]?.processing
-                                    "
-                                    class="p-2 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg transition-colors duration-150 disabled:opacity-50 disabled:cursor-not-allowed"
-                                    title="Save"
-                                >
-                                    <svg
-                                        class="w-5 h-5"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="2"
-                                            d="M5 13l4 4L19 7"
-                                        />
-                                    </svg>
-                                </button>
-                                <button
-                                    @click="cancelEdit(assignment.id)"
-                                    class="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors duration-150"
-                                    title="Cancel"
-                                >
-                                    <svg
-                                        class="w-5 h-5"
-                                        fill="none"
-                                        stroke="currentColor"
-                                        viewBox="0 0 24 24"
-                                    >
-                                        <path
-                                            stroke-linecap="round"
-                                            stroke-linejoin="round"
-                                            stroke-width="2"
-                                            d="M6 18L18 6M6 6l12 12"
-                                        />
-                                    </svg>
-                                </button>
-                            </template>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Pagination -->
-            <div
-                v-if="
-                    props.assignments.links &&
-                    props.assignments.links.length > 3
-                "
-                class="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between"
-            >
-                <div class="flex-1 flex justify-between sm:hidden">
-                    <Link
-                        v-if="props.assignments.links[0].url"
-                        :href="props.assignments.links[0].url"
-                        class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        preserve-scroll
-                    >
-                        Previous
-                    </Link>
-                    <Link
-                        v-if="
-                            props.assignments.links[
-                                props.assignments.links.length - 1
-                            ].url
-                        "
-                        :href="
-                            props.assignments.links[
-                                props.assignments.links.length - 1
-                            ].url
-                        "
-                        class="ml-3 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        preserve-scroll
-                    >
-                        Next
-                    </Link>
-                </div>
-                <div
-                    class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between"
-                >
-                    <div>
-                        <p class="text-sm text-gray-700 dark:text-gray-300">
-                            Showing
-                            <span class="font-medium">{{
-                                props.assignments.from || 0
-                            }}</span>
-                            to
-                            <span class="font-medium">{{
-                                props.assignments.to || 0
-                            }}</span>
-                            of
-                            <span class="font-medium">{{
-                                props.assignments.total || 0
-                            }}</span>
-                            results
-                        </p>
-                    </div>
-                    <div class="flex gap-1">
-                        <Link
-                            v-for="(link, index) in props.assignments.links"
-                            :key="index"
-                            :href="link.url || '#'"
-                            v-html="link.label"
-                            :class="[
-                                'px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-150',
-                                link.active
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700',
-                                !link.url ||
-                                link.url === '#' ||
-                                link.url === null
-                                    ? 'opacity-50 cursor-not-allowed pointer-events-none'
-                                    : 'cursor-pointer',
-                            ]"
-                            preserve-scroll
-                        />
-                    </div>
-                </div>
+                <input
+                    v-model="searchQuery"
+                    type="text"
+                    placeholder="Search subjects or instructors..."
+                    class="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all"
+                />
             </div>
         </div>
 
-        <!-- Create Assignment Modal -->
-        <Modal :show="showCreateModal" @close="closeCreateModal">
-            <div class="p-6">
-                <div class="flex items-center justify-between mb-6">
-                    <h2
-                        class="text-xl font-semibold text-gray-900 dark:text-white"
-                    >
-                        Assign Instructor to Subject
-                    </h2>
-                    <button
-                        @click="closeCreateModal"
-                        class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors"
+        <!-- Subject Cards Grid -->
+        <div
+            v-if="filteredSubjects.length > 0"
+            class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5"
+        >
+            <div
+                v-for="subject in filteredSubjects"
+                :key="subject.id"
+                class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col"
+            >
+                <!-- Card Header -->
+                <div class="px-5 pt-5 pb-4">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <span class="text-xs font-mono font-medium text-indigo-600 dark:text-indigo-400">
+                                {{ subject.code }}
+                            </span>
+                            <h3 class="text-base font-semibold text-gray-900 dark:text-white mt-0.5 leading-snug">
+                                {{ subject.name }}
+                            </h3>
+                        </div>
+                        <span class="flex-shrink-0 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                            {{ subject.assignments.length }} instructor{{ subject.assignments.length !== 1 ? 's' : '' }}
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Assigned Instructors -->
+                <div class="flex-1 px-5 pb-3">
+                    <!-- Empty state -->
+                    <div
+                        v-if="subject.assignments.length === 0"
+                        class="py-6 text-center"
                     >
                         <svg
-                            class="w-6 h-6"
+                            class="mx-auto w-8 h-8 text-gray-300 dark:text-gray-600 mb-2"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -615,82 +202,126 @@ const formatDate = (dateString) => {
                             <path
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12"
+                                stroke-width="1.5"
+                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
                             />
+                        </svg>
+                        <p class="text-xs text-gray-400 dark:text-gray-500">
+                            No instructor assigned
+                        </p>
+                    </div>
+
+                    <!-- Instructor list -->
+                    <div v-else class="space-y-2">
+                        <div
+                            v-for="assignment in subject.assignments"
+                            :key="assignment.id"
+                            class="group flex items-center justify-between gap-2 py-2 px-3 -mx-1 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                        >
+                            <div class="flex items-center gap-3 min-w-0">
+                                <div class="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                                    {{ assignment.professor_name.charAt(0).toUpperCase() }}
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
+                                        {{ assignment.professor_name }}
+                                    </p>
+                                    <p class="text-xs text-gray-400 dark:text-gray-500 truncate">
+                                        {{ assignment.department_name }}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                @click="openDeleteModal(assignment.id)"
+                                class="opacity-0 group-hover:opacity-100 p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all"
+                                title="Remove"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card Footer — Add Button -->
+                <div class="px-5 py-3 border-t border-gray-100 dark:border-gray-700/50">
+                    <button
+                        @click="openAssignModal(subject)"
+                        class="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-medium text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 rounded-lg transition-colors"
+                    >
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Assign Instructor
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- No Results -->
+        <div
+            v-else
+            class="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-12 text-center"
+        >
+            <svg
+                class="mx-auto h-12 w-12 text-gray-300 dark:text-gray-600 mb-3"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+            >
+                <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
+            </svg>
+            <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                No subjects found
+            </h3>
+            <p class="text-sm text-gray-500 dark:text-gray-400">
+                Try adjusting your search query.
+            </p>
+        </div>
+
+        <!-- Assign Instructor Modal -->
+        <Modal :show="showAssignModal" @close="closeAssignModal">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">
+                            Assign Instructor
+                        </h2>
+                        <p class="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                            {{ assignSubjectName }}
+                        </p>
+                    </div>
+                    <button
+                        @click="closeAssignModal"
+                        class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                    >
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
-                <form @submit.prevent="submitCreate" class="space-y-6">
+                <form @submit.prevent="submitAssign" class="space-y-5">
                     <div>
-                        <InputLabel
-                            for="create_professor_id"
-                            value="Instructor"
-                            class="mb-2"
+                        <InputLabel value="Instructor" class="mb-2" />
+                        <SearchableSelect
+                            v-model="assignForm.professor_id"
+                            :options="professorOptions"
+                            placeholder="Search instructor by name or department..."
                         />
-                        <select
-                            id="create_professor_id"
-                            v-model="form.professor_id"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                            required
-                        >
-                            <option value="" disabled>Select instructor</option>
-                            <option
-                                v-for="prof in props.professors"
-                                :key="prof.id"
-                                :value="prof.id"
-                            >
-                                {{ prof.user?.name }} ({{
-                                    prof.department?.name || "No Department"
-                                }})
-                            </option>
-                        </select>
-                        <InputError
-                            class="mt-2"
-                            :message="form.errors.professor_id"
-                        />
+                        <InputError class="mt-2" :message="assignForm.errors.professor_id" />
                     </div>
-                    <div>
-                        <InputLabel
-                            for="create_subject_id"
-                            value="Subject"
-                            class="mb-2"
-                        />
-                        <select
-                            id="create_subject_id"
-                            v-model="form.subject_id"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                            required
-                        >
-                            <option value="" disabled>Select subject</option>
-                            <option
-                                v-for="sub in props.subjects"
-                                :key="sub.id"
-                                :value="sub.id"
-                            >
-                                {{ sub.code }} - {{ sub.name }}
-                            </option>
-                        </select>
-                        <InputError
-                            class="mt-2"
-                            :message="form.errors.subject_id"
-                        />
-                    </div>
-                    <div
-                        class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700"
-                    >
-                        <SecondaryButton
-                            type="button"
-                            @click="closeCreateModal"
-                            class="px-4 py-2"
-                        >
+                    <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <SecondaryButton type="button" @click="closeAssignModal" class="px-4 py-2">
                             Cancel
                         </SecondaryButton>
-                        <PrimaryButton
-                            :disabled="form.processing"
-                            class="px-4 py-2"
-                        >
-                            Assign Instructor
+                        <PrimaryButton :disabled="assignForm.processing" class="px-4 py-2">
+                            Assign
                         </PrimaryButton>
                     </div>
                 </form>
@@ -700,8 +331,8 @@ const formatDate = (dateString) => {
         <!-- Delete Confirmation Modal -->
         <ConfirmationModal
             :show="showDeleteModal"
-            title="Remove Assignment"
-            message="Are you sure you want to remove this assignment? This action cannot be undone and the instructor will no longer have access to this subject."
+            title="Remove Instructor"
+            message="Are you sure you want to remove this instructor from the subject? This action cannot be undone."
             confirm-text="Remove"
             cancel-text="Cancel"
             variant="danger"

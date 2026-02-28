@@ -15,14 +15,29 @@ class ProfessorSubjectController extends Controller
 {
     public function index()
     {
-        $assignments = ProfessorSubject::with(['professor.user', 'professor.department', 'subject'])
-            ->orderByDesc('id')
-            ->paginate(7);
+        $subjects = Subject::with(['professorSubjects.professor.user', 'professorSubjects.professor.department'])
+            ->orderBy('name')
+            ->get()
+            ->map(function ($subject) {
+                return [
+                    'id' => $subject->id,
+                    'code' => $subject->code,
+                    'name' => $subject->name,
+                    'assignments' => $subject->professorSubjects->map(function ($ps) {
+                        return [
+                            'id' => $ps->id,
+                            'professor_id' => $ps->professor_id,
+                            'professor_name' => $ps->professor->user->name ?? 'Unknown',
+                            'department_name' => $ps->professor->department->name ?? 'No Department',
+                            'created_at' => $ps->created_at?->toISOString(),
+                        ];
+                    }),
+                ];
+            });
 
         return Inertia::render('Admin/ProfessorSubjects/Index', [
-            'assignments' => $assignments,
+            'subjects' => $subjects,
             'professors' => Professor::with(['user', 'department'])->orderBy('id')->get(),
-            'subjects' => Subject::orderBy('name')->get(),
         ]);
     }
 
@@ -74,4 +89,3 @@ class ProfessorSubjectController extends Controller
         ]);
     }
 }
-

@@ -7,6 +7,7 @@ import InputLabel from "@/Components/InputLabel.vue";
 import TextInput from "@/Components/TextInput.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import ConfirmationModal from "@/Components/ConfirmationModal.vue";
+import SearchableSelect from "@/Components/SearchableSelect.vue";
 import { Head, Link, router, useForm } from "@inertiajs/vue3";
 import { ref, watch, computed } from "vue";
 import { useToast } from "@/Stores/useToast";
@@ -67,6 +68,13 @@ const importForm = useForm({
     file: null,
     department_id: "",
 });
+
+const departmentOptions = computed(() =>
+    props.departments.map((d) => ({
+        value: d.id,
+        label: d.name,
+    }))
+);
 
 const openCreateModal = () => {
     showCreateModal.value = true;
@@ -634,27 +642,14 @@ const formatDate = (dateString) => {
                     <!-- Department Selection -->
                     <div>
                         <InputLabel
-                            for="import_department_id"
                             value="Department *"
                             class="mb-2"
                         />
-                        <select
-                            id="import_department_id"
+                        <SearchableSelect
                             v-model="importForm.department_id"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                            required
-                        >
-                            <option value="" disabled>
-                                Select department for all instructors
-                            </option>
-                            <option
-                                v-for="dept in props.departments"
-                                :key="dept.id"
-                                :value="dept.id"
-                            >
-                                {{ dept.name }}
-                            </option>
-                        </select>
+                            :options="departmentOptions"
+                            placeholder="Search and select department..."
+                        />
                         <InputError
                             class="mt-2"
                             :message="importForm.errors.department_id"
@@ -812,25 +807,14 @@ const formatDate = (dateString) => {
                     </div>
                     <div>
                         <InputLabel
-                            for="create_department_id"
                             value="Department"
                             class="mb-2"
                         />
-                        <select
-                            id="create_department_id"
+                        <SearchableSelect
                             v-model="createForm.department_id"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                            required
-                        >
-                            <option value="" disabled>Select department</option>
-                            <option
-                                v-for="dept in props.departments"
-                                :key="dept.id"
-                                :value="dept.id"
-                            >
-                                {{ dept.name }}
-                            </option>
-                        </select>
+                            :options="departmentOptions"
+                            placeholder="Search and select department..."
+                        />
                         <InputError
                             class="mt-2"
                             :message="createForm.errors.department_id"
@@ -925,24 +909,14 @@ const formatDate = (dateString) => {
                     </div>
                     <div>
                         <InputLabel
-                            for="edit_department_id"
                             value="Department"
                             class="mb-2"
                         />
-                        <select
-                            id="edit_department_id"
+                        <SearchableSelect
                             v-model="editForm.department_id"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                        >
-                            <option value="" disabled>Select department</option>
-                            <option
-                                v-for="dept in props.departments"
-                                :key="dept.id"
-                                :value="dept.id"
-                            >
-                                {{ dept.name }}
-                            </option>
-                        </select>
+                            :options="departmentOptions"
+                            placeholder="Search and select department..."
+                        />
                         <InputError
                             class="mt-2"
                             :message="editForm.errors.department_id"

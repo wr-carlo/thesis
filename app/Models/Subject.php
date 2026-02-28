@@ -20,6 +20,11 @@ class Subject extends Model
         return $this->belongsToMany(Professor::class, 'professor_subject');
     }
 
+    public function professorSubjects()
+    {
+        return $this->hasMany(ProfessorSubject::class);
+    }
+
     public function students()
     {
         return $this->belongsToMany(Student::class, 'student_subject')->withPivot('status');

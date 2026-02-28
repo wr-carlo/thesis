@@ -6,6 +6,7 @@ import PrimaryButton from "@/Components/PrimaryButton.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import TextInput from "@/Components/TextInput.vue";
 import Modal from "@/Components/Modal.vue";
+import SearchableSelect from "@/Components/SearchableSelect.vue";
 import { Head, Link, router, useForm } from "@inertiajs/vue3";
 import { ref, computed } from "vue";
 import { useToast } from "@/Stores/useToast";
@@ -28,6 +29,13 @@ const editingId = ref(null);
 const showCreateModal = ref(false);
 const showDeleteModal = ref(false);
 const sectionToDelete = ref(null);
+
+const departmentOptions = computed(() =>
+    props.departments.map((d) => ({
+        value: d.id,
+        label: d.name,
+    }))
+);
 
 const hasSections = computed(() => props.sections.data?.length > 0);
 
@@ -224,19 +232,11 @@ const formatDate = (dateString) => {
                                     />
                                 </div>
                                 <div>
-                                    <select
+                                    <SearchableSelect
                                         v-model="(updateForms[section.id] ||= useForm({ name: section.name, department_id: section.department_id })).department_id"
-                                        class="w-full px-3 py-2 text-base border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                                    >
-                                        <option value="" disabled>Select department</option>
-                                        <option
-                                            v-for="dept in props.departments"
-                                            :key="dept.id"
-                                            :value="dept.id"
-                                        >
-                                            {{ dept.name }}
-                                        </option>
-                                    </select>
+                                        :options="departmentOptions"
+                                        placeholder="Search and select department..."
+                                    />
                                     <InputError
                                         class="text-xs mt-1"
                                         :message="updateForms[section.id]?.errors?.department_id"
@@ -361,22 +361,12 @@ const formatDate = (dateString) => {
                 </div>
                 <form @submit.prevent="submitCreate" class="space-y-6">
                     <div>
-                        <InputLabel for="create_department_id" value="Department" class="mb-2" />
-                        <select
-                            id="create_department_id"
+                        <InputLabel value="Department" class="mb-2" />
+                        <SearchableSelect
                             v-model="form.department_id"
-                            class="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
-                            required
-                        >
-                            <option value="" disabled>Select department</option>
-                            <option
-                                v-for="dept in props.departments"
-                                :key="dept.id"
-                                :value="dept.id"
-                            >
-                                {{ dept.name }}
-                            </option>
-                        </select>
+                            :options="departmentOptions"
+                            placeholder="Search and select department..."
+                        />
                         <InputError
                             class="mt-2"
                             :message="form.errors.department_id"
