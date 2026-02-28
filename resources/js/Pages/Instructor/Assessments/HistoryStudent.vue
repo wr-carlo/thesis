@@ -8,6 +8,10 @@ const props = defineProps({
     student: Object,
     summary: Object,
     attempts: Array,
+    cheating_logs: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const expandedAttemptIds = ref(new Set());
@@ -61,6 +65,29 @@ const isBestAttempt = (attemptId) => {
 
 const isLatestAttempt = (index) => {
     return index === props.attempts.length - 1;
+};
+
+// Cheating log helpers
+const getEventBadgeClass = (eventType) => {
+    switch (eventType) {
+        case 'tab_switch':
+            return 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300';
+        case 'page_leave':
+            return 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300';
+        case 'window_blur':
+            return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
+        default:
+            return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-300';
+    }
+};
+
+const getEventLabel = (eventType) => {
+    switch (eventType) {
+        case 'tab_switch': return 'Tab Switch';
+        case 'page_leave': return 'Page Leave';
+        case 'window_blur': return 'Window Blur';
+        default: return 'Unknown';
+    }
 };
 </script>
 
@@ -132,6 +159,27 @@ const isLatestAttempt = (index) => {
                         class="text-sm font-medium text-text-primary dark:text-text-inverted"
                     >
                         {{ formatDate(summary.latest_attempt_date) || "N/A" }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Cheating Activity Alert Banner -->
+            <div
+                v-if="cheating_logs && cheating_logs.length > 0"
+                class="mb-6 card p-4 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-lg"
+            >
+                <div class="flex items-center gap-3">
+                    <svg class="w-6 h-6 text-red-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div class="flex-1">
+                        <h3 class="text-sm font-semibold text-red-800 dark:text-red-300">
+                            ⚠ {{ cheating_logs.length }} Suspicious Activit{{ cheating_logs.length === 1 ? 'y' : 'ies' }} Detected
+                        </h3>
+                        <p class="text-xs text-red-700 dark:text-red-400 mt-1">
+                            This student triggered cheating detection alerts during assessment taking. See details below.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -316,6 +364,45 @@ const isLatestAttempt = (index) => {
                                     {{ formatDate(adaptive.created_at) }}
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Suspicious Activity Log -->
+            <div v-if="cheating_logs && cheating_logs.length > 0" class="mt-8 space-y-4">
+                <h2 class="text-xl font-semibold text-text-primary dark:text-text-inverted mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Suspicious Activity Log
+                    <span class="ml-2 px-2.5 py-0.5 text-xs font-semibold bg-red-500 text-white rounded-full">
+                        {{ cheating_logs.length }}
+                    </span>
+                </h2>
+
+                <div class="card overflow-hidden">
+                    <div class="divide-y divide-border-light dark:divide-border-dark">
+                        <div
+                            v-for="log in cheating_logs"
+                            :key="log.id"
+                            class="flex items-center gap-4 p-4 hover:bg-surface-muted dark:hover:bg-surface-dark-muted transition-colors"
+                        >
+                            <span
+                                :class="[
+                                    'px-2.5 py-1 text-xs font-semibold rounded-full whitespace-nowrap',
+                                    getEventBadgeClass(log.event_type),
+                                ]"
+                            >
+                                {{ getEventLabel(log.event_type) }}
+                            </span>
+                            <p class="flex-1 text-sm text-text-primary dark:text-text-inverted truncate">
+                                {{ log.description }}
+                            </p>
+                            <span class="text-xs text-text-secondary whitespace-nowrap">
+                                {{ formatDate(log.created_at) }}
+                            </span>
                         </div>
                     </div>
                 </div>

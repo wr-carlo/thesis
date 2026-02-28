@@ -7,6 +7,7 @@ use App\Http\Requests\Student\SubmitAssessmentRequest;
 use App\Models\Assessment;
 use App\Models\AssessmentAttempt;
 use App\Models\AssessmentItem;
+use App\Models\Notification;
 use App\Models\StudentAnswer;
 use App\Services\AI\AIServiceManager;
 use App\Services\AI\AIResponseParser;
@@ -583,5 +584,46 @@ class AssessmentController extends Controller
             'true_or_false' => strtolower(trim($studentAnswer)) === strtolower(trim($correctAnswer)),
             default => false,
         };
+    }
+
+    /**
+     * Log cheating activity (tab switch, page leave, window blur) and notify the instructor.
+     */
+    public function logCheating(Request $request, Assessment $assessment)
+    {
+        $student = auth()->user()->student;
+
+        if (!$student) {
+            abort(403, 'Student record not found');
+        }
+
+        $request->validate([
+            'event_type' => 'required|in:tab_switch,page_leave,window_blur',
+        ]);
+
+        $eventType = $request->input('event_type');
+
+        $eventLabels = [
+            'tab_switch' => 'switched tabs or minimized the window',
+            'page_leave' => 'attempted to leave the page',
+            'window_blur' => 'switched to another window',
+        ];
+
+        $eventLabel = $eventLabels[$eventType] ?? $eventType;
+        $studentName = auth()->user()->name;
+        $assessmentTitle = $assessment->title;
+
+        // Find the instructor's user_id via assessment → lesson → professor → user
+        $assessment->load('lesson.professor');
+        $instructorUserId = $assessment->lesson->professor->user_id ?? null;
+
+        if ($instructorUserId) {
+            Notification::create([
+                'user_id' => $instructorUserId,
+                'description' => "⚠️ Cheating Alert: {$studentName} {$eventLabel} while taking \"{$assessmentTitle}\".",
+            ]);
+        }
+
+        return response()->json(['success' => true]);
     }
 }

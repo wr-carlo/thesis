@@ -95,7 +95,21 @@ const handleNotificationClick = (notification) => {
     if (!notification.read_at) {
         markAsRead(notification.id);
     }
-    isOpen.value = false;
+};
+
+const timeAgo = (dateString) => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diff = Math.floor((now - date) / 1000);
+
+    if (diff < 60) return "Just now";
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    if (diff < 604800) return `${Math.floor(diff / 86400)}d ago`;
+    return new Date(dateString).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+    });
 };
 
 onMounted(() => {
@@ -194,18 +208,23 @@ onUnmounted(() => {
         >
             <div
                 v-if="isOpen"
-                class="absolute -right-30 bottom-full mb-2 w-80 bg-white dark:bg-surface-dark rounded-lg shadow-lg border border-border-light dark:border-border-dark z-50 max-h-96 overflow-hidden flex flex-col"
+                class="absolute -right-30 bottom-full mb-2 w-80 bg-white dark:bg-surface-dark rounded-lg shadow-lg border border-border-light dark:border-border-dark z-50 max-h-[28rem] overflow-hidden flex flex-col"
                 @click.stop
             >
                 <!-- Header -->
                 <div
-                    class="p-4 border-b border-border-light dark:border-border-dark flex items-center justify-between"
+                    class="p-4 border-b border-border-light dark:border-border-dark flex items-center justify-between flex-shrink-0"
                 >
-                    <h3
-                        class="font-semibold text-text-primary dark:text-text-inverted"
-                    >
-                        Notifications
-                    </h3>
+                    <div>
+                        <h3
+                            class="font-semibold text-text-primary dark:text-text-inverted"
+                        >
+                            Notifications
+                        </h3>
+                        <p class="text-xs text-text-secondary mt-0.5">
+                            {{ notifications.length }} total · {{ unreadCount }} unread
+                        </p>
+                    </div>
                     <button
                         v-if="unreadCount > 0"
                         @click="markAllAsRead"
@@ -215,7 +234,7 @@ onUnmounted(() => {
                     </button>
                 </div>
 
-                <!-- Notifications List -->
+                <!-- Notifications List (Scrollable) -->
                 <div class="overflow-y-auto flex-1">
                     <!-- Skeleton Loaders -->
                     <div
@@ -261,7 +280,7 @@ onUnmounted(() => {
                                 d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
                             />
                         </svg>
-                        <p class="text-sm">No new notifications</p>
+                        <p class="text-sm">No notifications yet</p>
                     </div>
 
                     <div
@@ -283,18 +302,21 @@ onUnmounted(() => {
                                     v-if="!notification.read_at"
                                     class="mt-1.5 h-2 w-2 rounded-full bg-accent-primary flex-shrink-0"
                                 ></div>
+                                <div
+                                    v-else
+                                    class="mt-1.5 h-2 w-2 rounded-full bg-gray-300 dark:bg-gray-600 flex-shrink-0"
+                                ></div>
                                 <div class="flex-1 min-w-0">
                                     <p
-                                        class="text-sm text-text-primary dark:text-text-inverted"
+                                        :class="[
+                                            'text-sm text-text-primary dark:text-text-inverted',
+                                            !notification.read_at ? 'font-semibold' : '',
+                                        ]"
                                     >
                                         {{ notification.description }}
                                     </p>
                                     <p class="text-xs text-text-secondary mt-1">
-                                        {{
-                                            new Date(
-                                                notification.created_at
-                                            ).toLocaleString()
-                                        }}
+                                        {{ timeAgo(notification.created_at) }}
                                     </p>
                                 </div>
                             </div>

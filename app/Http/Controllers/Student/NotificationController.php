@@ -9,16 +9,15 @@ use Illuminate\Http\Request;
 class NotificationController extends Controller
 {
     /**
-     * Get unread notifications for the authenticated student.
+     * Get all notifications for the authenticated student.
      */
     public function index()
     {
         $user = auth()->user();
 
         $notifications = Notification::where('user_id', $user->id)
-            ->whereNull('read_at')
             ->orderBy('created_at', 'desc')
-            ->limit(20)
+            ->limit(50)
             ->get()
             ->map(function ($notification) {
                 return [
@@ -44,7 +43,6 @@ class NotificationController extends Controller
      */
     public function markAsRead(Notification $notification)
     {
-        // Verify the notification belongs to the authenticated user
         if ($notification->user_id !== auth()->id()) {
             abort(403, 'Unauthorized');
         }

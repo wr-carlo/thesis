@@ -82,6 +82,7 @@ Route::middleware(['auth', 'student'])->prefix('student')->as('student.')->group
     Route::get('assessments/{assessment}/history', [StudentAssessmentController::class, 'history'])->name('assessments.history');
     Route::get('assessments/{assessment}/results/{attempt}', [StudentAssessmentController::class, 'results'])->name('assessments.results');
     Route::post('assessments/{assessment}/adaptive/{attempt}', [StudentAssessmentController::class, 'generateAdaptive'])->name('assessments.adaptive');
+    Route::post('assessments/{assessment}/cheating-log', [StudentAssessmentController::class, 'logCheating'])->name('assessments.cheating-log');
 
     // Notifications
     Route::get('notifications/unread', [StudentNotificationController::class, 'index'])->name('notifications.unread');

@@ -1,9 +1,10 @@
 <script setup>
 import StudentLayout from "@/Layouts/StudentLayout.vue";
 import { Head, useForm } from "@inertiajs/vue3";
-import { computed, ref } from "vue";
+import { computed, ref, onMounted, onUnmounted } from "vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import InputError from "@/Components/InputError.vue";
+import axios from "axios";
 
 const props = defineProps({
     assessment: Object,
@@ -15,6 +16,7 @@ const form = useForm({
 });
 
 const currentQuestionIndex = ref(0);
+const violationCount = ref(0);
 
 const totalQuestions = computed(() => props.items?.length || 0);
 
@@ -105,6 +107,56 @@ const submitForm = () => {
         preserveScroll: true,
     });
 };
+
+// ===================== Cheating Detection =====================
+
+const lastEventTime = ref({});
+const DEBOUNCE_MS = 5000; // 5 seconds debounce per event type
+
+const logCheatingEvent = async (eventType) => {
+    const now = Date.now();
+    if (lastEventTime.value[eventType] && now - lastEventTime.value[eventType] < DEBOUNCE_MS) {
+        return; // debounce: skip if same event fired within 5s
+    }
+    lastEventTime.value[eventType] = now;
+    violationCount.value++;
+
+    try {
+        await axios.post(route("student.assessments.cheating-log", props.assessment.id), {
+            event_type: eventType,
+        });
+    } catch (e) {
+        // silently fail – don't block the student
+    }
+};
+
+const handleVisibilityChange = () => {
+    if (document.hidden) {
+        logCheatingEvent('tab_switch');
+    }
+};
+
+const handleWindowBlur = () => {
+    logCheatingEvent('window_blur');
+};
+
+const handleBeforeUnload = (e) => {
+    logCheatingEvent('page_leave');
+    e.preventDefault();
+    e.returnValue = '';
+};
+
+onMounted(() => {
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('blur', handleWindowBlur);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+});
+
+onUnmounted(() => {
+    document.removeEventListener('visibilitychange', handleVisibilityChange);
+    window.removeEventListener('blur', handleWindowBlur);
+    window.removeEventListener('beforeunload', handleBeforeUnload);
+});
 </script>
 
 <template>
@@ -113,6 +165,29 @@ const submitForm = () => {
         <Head :title="assessment.title" />
 
         <div class="max-w-4xl mx-auto">
+
+            <!-- Cheating Detection Warning Banner -->
+            <div class="mb-6 card p-4 bg-red-50 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-lg">
+                <div class="flex items-start gap-3">
+                    <svg class="w-6 h-6 text-red-500 flex-shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    <div class="flex-1">
+                        <h3 class="text-sm font-semibold text-red-800 dark:text-red-300">
+                            ⚠ Assessment Monitoring Active
+                        </h3>
+                        <p class="text-xs text-red-700 dark:text-red-400 mt-1">
+                            This assessment is being monitored. Switching tabs, leaving this page, or opening other windows will be recorded and reported to your instructor.
+                        </p>
+                    </div>
+                    <div v-if="violationCount > 0"
+                        class="flex-shrink-0 px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full">
+                        {{ violationCount }} violation{{ violationCount !== 1 ? 's' : '' }}
+                    </div>
+                </div>
+            </div>
+
             <!-- Header -->
             <div class="mb-6">
                 <div class="card p-6">

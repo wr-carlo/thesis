@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Assessment;
 use App\Models\AssessmentAttempt;
 use App\Models\AssessmentItem;
+use App\Models\Notification;
 use App\Models\Student;
 use App\Models\StudentAnswer;
 use Illuminate\Http\Request;
@@ -233,6 +234,32 @@ class AssessmentHistoryController extends Controller
         $bestAttempt = $attemptsData->firstWhere('score', $bestScore);
         $latestAttempt = $attemptsData->last();
 
+        // Fetch cheating alert notifications for this student + assessment
+        $studentName = $student->user->name ?? '';
+        $assessmentTitle = $assessment->title;
+        $cheatingLogs = Notification::where('user_id', auth()->id())
+            ->where('description', 'like', "%Cheating Alert%{$studentName}%{$assessmentTitle}%")
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($notification) {
+                // Parse event type from description
+                $eventType = 'unknown';
+                if (str_contains($notification->description, 'switched tabs')) {
+                    $eventType = 'tab_switch';
+                } elseif (str_contains($notification->description, 'leave the page')) {
+                    $eventType = 'page_leave';
+                } elseif (str_contains($notification->description, 'another window')) {
+                    $eventType = 'window_blur';
+                }
+
+                return [
+                    'id' => $notification->id,
+                    'event_type' => $eventType,
+                    'description' => $notification->description,
+                    'created_at' => $notification->created_at,
+                ];
+            });
+
         return Inertia::render('Instructor/Assessments/HistoryStudent', [
             'assessment' => [
                 'id' => $assessment->id,
@@ -257,6 +284,7 @@ class AssessmentHistoryController extends Controller
                 'latest_attempt_date' => $latestAttempt['created_at'] ?? null,
             ],
             'attempts' => $attemptsData->values(),
+            'cheating_logs' => $cheatingLogs,
         ]);
     }
 }
