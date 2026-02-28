@@ -295,6 +295,16 @@ const uploadProgress = ref(0);
 const currentStage = ref("");
 const uploadError = ref("");
 
+// Sound effects
+const playSound = (type) => {
+    const soundFile = type === 'success' ? '/sound-effect/success.mp3' : '/sound-effect/failed.mp3';
+    const audio = new Audio(soundFile);
+    audio.volume = 0.5;
+    audio.play().catch(() => {
+        // Silently ignore if browser blocks autoplay
+    });
+};
+
 const handleFileSelect = (event) => {
     const file = event.target.files[0];
     if (file) {
@@ -319,9 +329,11 @@ const submitForm = () => {
 
     form.post(route("instructor.lessons.store"), {
         onSuccess: () => {
+            playSound('success');
             showProcessingModal.value = false;
         },
         onError: (errors) => {
+            playSound('failed');
             uploadError.value =
                 errors.error || "An error occurred during upload";
             uploadProgress.value = 0;
