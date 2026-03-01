@@ -36,9 +36,12 @@ class GroqProvider implements AIServiceInterface
         $multipleChoiceCount = $options['multiple_choice_count'] ?? 0;
         $identificationCount = $options['identification_count'] ?? 0;
         $trueOrFalseCount = $options['true_or_false_count'] ?? 0;
-        $difficulty = $options['difficulty'] ?? 'medium';
+        $bloomLevels = $options['bloom_levels'] ?? ['remember', 'understand'];
 
-        $systemPrompt = "You are an expert assessment generator. Generate educational assessment questions based on the provided lesson content. Always respond with valid JSON only.";
+        $systemPrompt = "You are an expert assessment generator aligned with Bloom's Taxonomy. "
+            . "Generate educational assessment questions based on the provided lesson content. "
+            . "Each question must be tagged with its appropriate Bloom's Taxonomy cognitive level. "
+            . "Always respond with valid JSON only.";
 
         $userPrompt = "Generate assessment questions based on this lesson content:\n\n";
 
@@ -53,30 +56,12 @@ class GroqProvider implements AIServiceInterface
         $userPrompt .= "- Multiple Choice: {$multipleChoiceCount} questions\n";
         $userPrompt .= "- Identification: {$identificationCount} questions\n";
         $userPrompt .= "- True/False: {$trueOrFalseCount} questions\n";
-        $userPrompt .= "- Difficulty Level: {$difficulty}\n\n";
+
+        // Add Bloom's Taxonomy instructions
+        $userPrompt .= BloomsTaxonomyConfig::getPromptInstructions($bloomLevels);
 
         $userPrompt .= "Return ONLY a valid JSON response with this exact structure:\n";
-        $userPrompt .= "{\n";
-        $userPrompt .= '  "multiple_choice": [' . "\n";
-        $userPrompt .= '    {' . "\n";
-        $userPrompt .= '      "question": "Question text here",' . "\n";
-        $userPrompt .= '      "choices": ["Choice A", "Choice B", "Choice C", "Choice D"],' . "\n";
-        $userPrompt .= '      "correct_answer": "Choice A"' . "\n";
-        $userPrompt .= '    }' . "\n";
-        $userPrompt .= '  ],' . "\n";
-        $userPrompt .= '  "identification": [' . "\n";
-        $userPrompt .= '    {' . "\n";
-        $userPrompt .= '      "question": "Question text here",' . "\n";
-        $userPrompt .= '      "correct_answer": "Answer text"' . "\n";
-        $userPrompt .= '    }' . "\n";
-        $userPrompt .= '  ],' . "\n";
-        $userPrompt .= '  "true_or_false": [' . "\n";
-        $userPrompt .= '    {' . "\n";
-        $userPrompt .= '      "question": "Statement text here",' . "\n";
-        $userPrompt .= '      "correct_answer": "True" or "False"' . "\n";
-        $userPrompt .= '    }' . "\n";
-        $userPrompt .= '  ]' . "\n";
-        $userPrompt .= "}\n";
+        $userPrompt .= BloomsTaxonomyConfig::getJsonStructure();
 
         return [
             'system' => $systemPrompt,

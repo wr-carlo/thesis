@@ -295,7 +295,7 @@ class LessonController extends Controller
                     'multiple_choice_count' => $request->multiple_choice_count,
                     'identification_count' => $request->identification_count,
                     'true_or_false_count' => $request->true_or_false_count,
-                    'difficulty' => $request->difficulty,
+                    'bloom_levels' => $request->bloom_levels,
                 ];
 
                 $aiResult = $this->aiManager->generateAssessment($cleanedText, $config);
@@ -431,6 +431,7 @@ class LessonController extends Controller
                     'type' => 'multiple_choice',
                     'choices' => $choices,
                     'correct_answer' => $question['correct_answer'] ?? '',
+                    'bloom_level' => $question['bloom_level'] ?? null,
                 ];
             }
         }
@@ -442,6 +443,7 @@ class LessonController extends Controller
                     'type' => 'identification',
                     'choices' => null,
                     'correct_answer' => $question['correct_answer'] ?? '',
+                    'bloom_level' => $question['bloom_level'] ?? null,
                 ];
             }
         }
@@ -453,6 +455,7 @@ class LessonController extends Controller
                     'type' => 'true_or_false',
                     'choices' => null,
                     'correct_answer' => $question['correct_answer'] ?? '',
+                    'bloom_level' => $question['bloom_level'] ?? null,
                 ];
             }
         }
@@ -538,6 +541,7 @@ class LessonController extends Controller
                     $questionData = [
                         'question' => $item['question'],
                         'correct_answer' => $item['correct_answer'],
+                        'bloom_level' => $item['bloom_level'] ?? null,
                     ];
 
                     if ($item['type'] === 'multiple_choice' && isset($item['choices'])) {
@@ -759,6 +763,7 @@ class LessonController extends Controller
             'items.*.type' => 'required|in:multiple_choice,identification,true_or_false',
             'items.*.choices' => 'nullable|array',
             'items.*.correct_answer' => 'required|string',
+            'items.*.bloom_level' => 'nullable|string|in:remember,understand,apply,analyze,evaluate,create',
             'section_ids' => 'nullable|array',
             'section_ids.*' => 'exists:sections,id',
         ]);
@@ -782,6 +787,7 @@ class LessonController extends Controller
                     'type' => $item['type'],
                     'choices' => isset($item['choices']) ? json_encode($item['choices']) : null,
                     'correct_answer' => $item['correct_answer'],
+                    'bloom_level' => $item['bloom_level'] ?? null,
                 ]);
             }
 
