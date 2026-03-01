@@ -13,26 +13,23 @@ defineProps({
 <template>
     <AdminLayout>
         <Head title="Dashboard" />
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+
+        <!-- Stats Cards Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6 mb-8">
+            <!-- Professors Card -->
             <Link
                 :href="route('admin.instructors.index')"
-                class="card p-3 sm:p-4 block border border-transparent transition-all duration-200 cursor-pointer hover:border-accent-primary hover:bg-accent-primary/5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
+                class="card p-6 rounded-xl shadow-sm border border-transparent hover:shadow-md transition-shadow flex flex-col justify-between h-40 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
             >
-                <div class="flex items-start justify-between gap-4">
-                    <div>
-                        <div class="text-sm text-text-secondary">Professors</div>
-                        <div class="text-3xl font-semibold mt-1">
-                            {{ stats.professors }}
-                        </div>
-                        <div class="text-xs text-text-secondary mt-1">
-                            Manage professors
-                        </div>
-                    </div>
+                <div class="flex justify-between items-start">
+                    <h3 class="text-sm font-medium text-text-secondary">
+                        Professors
+                    </h3>
                     <div
-                        class="w-10 h-10 rounded-xl bg-accent-primary/10 text-accent-primary flex items-center justify-center"
+                        class="p-2 bg-accent-primary/10 rounded-lg"
                     >
                         <svg
-                            class="w-5 h-5"
+                            class="w-5 h-5 text-accent-primary"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -41,64 +38,92 @@ defineProps({
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
                                 stroke-width="2"
-                                d="M17 20h5V4H2v16h5m10 0v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6m10 0H7"
+                                d="M12 14l9-5-9-5-9 5 9 5z"
+                            />
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 14l6.16-3.422A12.083 12.083 0 0121 12.058V17a2 2 0 01-2 2H5a2 2 0 01-2-2v-4.942a12.083 12.083 0 012.84-1.48L12 14z"
                             />
                         </svg>
                     </div>
                 </div>
+                <div>
+                    <div
+                        class="text-3xl font-bold text-text-primary dark:text-text-inverted mb-1"
+                    >
+                        {{ stats.professors }}
+                    </div>
+                    <p class="text-xs text-text-secondary">
+                        Manage professors
+                    </p>
+                </div>
             </Link>
+
+            <!-- Students Card (Highlighted) -->
             <Link
                 :href="route('admin.students.index')"
-                class="card p-3 sm:p-4 block border border-transparent transition-all duration-200 cursor-pointer hover:border-accent-primary hover:bg-accent-primary/5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
+                class="card p-6 rounded-xl shadow-sm border border-accent-primary relative overflow-hidden group h-40 flex flex-col justify-between cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
             >
-                <div class="flex items-start justify-between gap-4">
+                <!-- Decorative corner blob -->
+                <div
+                    class="absolute top-0 right-0 w-24 h-24 bg-accent-primary/5 dark:bg-accent-primary/10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"
+                ></div>
+                <div
+                    class="relative z-10 flex flex-col justify-between h-full"
+                >
+                    <div class="flex justify-between items-start">
+                        <h3
+                            class="text-sm font-medium text-text-secondary"
+                        >
+                            Students
+                        </h3>
+                        <div
+                            class="p-2 bg-accent-primary/15 rounded-lg"
+                        >
+                            <svg
+                                class="w-5 h-5 text-accent-primary"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M17 20h5V4H2v16h5m10 0v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6m10 0H7"
+                                />
+                            </svg>
+                        </div>
+                    </div>
                     <div>
-                        <div class="text-sm text-text-secondary">Students</div>
-                        <div class="text-3xl font-semibold mt-1">
+                        <div
+                            class="text-3xl font-bold text-text-primary dark:text-text-inverted mb-1"
+                        >
                             {{ stats.students }}
                         </div>
-                        <div class="text-xs text-text-secondary mt-1">
+                        <p class="text-xs text-text-secondary">
                             Manage students
-                        </div>
-                    </div>
-                    <div
-                        class="w-10 h-10 rounded-xl bg-accent-primary/10 text-accent-primary flex items-center justify-center"
-                    >
-                        <svg
-                            class="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M17 20h5V4H2v16h5m10 0v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6m10 0H7"
-                            />
-                        </svg>
+                        </p>
                     </div>
                 </div>
             </Link>
+
+            <!-- Departments Card -->
             <Link
                 :href="route('admin.departments.index')"
-                class="card p-3 sm:p-4 block border border-transparent transition-all duration-200 cursor-pointer hover:border-accent-primary hover:bg-accent-primary/5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
+                class="card p-6 rounded-xl shadow-sm border border-transparent hover:shadow-md transition-shadow flex flex-col justify-between h-40 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
             >
-                <div class="flex items-start justify-between gap-4">
-                    <div>
-                        <div class="text-sm text-text-secondary">Departments</div>
-                        <div class="text-3xl font-semibold mt-1">
-                            {{ stats.departments }}
-                        </div>
-                        <div class="text-xs text-text-secondary mt-1">
-                            Manage departments
-                        </div>
-                    </div>
+                <div class="flex justify-between items-start">
+                    <h3 class="text-sm font-medium text-text-secondary">
+                        Departments
+                    </h3>
                     <div
-                        class="w-10 h-10 rounded-xl bg-accent-primary/10 text-accent-primary flex items-center justify-center"
+                        class="p-2 bg-accent-primary/10 rounded-lg"
                     >
                         <svg
-                            class="w-5 h-5"
+                            class="w-5 h-5 text-accent-primary"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -107,31 +132,37 @@ defineProps({
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
                                 stroke-width="2"
-                                d="M4 7h16M4 12h16M4 17h10"
+                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0H5m14 0h2M5 21H3m4-10h2m4 0h2m-6 4h2m4 0h2"
                             />
                         </svg>
                     </div>
                 </div>
+                <div>
+                    <div
+                        class="text-3xl font-bold text-text-primary dark:text-text-inverted mb-1"
+                    >
+                        {{ stats.departments }}
+                    </div>
+                    <p class="text-xs text-text-secondary">
+                        Manage departments
+                    </p>
+                </div>
             </Link>
+
+            <!-- Sections Card -->
             <Link
                 :href="route('admin.sections.index')"
-                class="card p-3 sm:p-4 block border border-transparent transition-all duration-200 cursor-pointer hover:border-accent-primary hover:bg-accent-primary/5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
+                class="card p-6 rounded-xl shadow-sm border border-transparent hover:shadow-md transition-shadow flex flex-col justify-between h-40 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
             >
-                <div class="flex items-start justify-between gap-4">
-                    <div>
-                        <div class="text-sm text-text-secondary">Sections</div>
-                        <div class="text-3xl font-semibold mt-1">
-                            {{ stats.sections }}
-                        </div>
-                        <div class="text-xs text-text-secondary mt-1">
-                            Manage sections
-                        </div>
-                    </div>
+                <div class="flex justify-between items-start">
+                    <h3 class="text-sm font-medium text-text-secondary">
+                        Sections
+                    </h3>
                     <div
-                        class="w-10 h-10 rounded-xl bg-accent-primary/10 text-accent-primary flex items-center justify-center"
+                        class="p-2 bg-accent-primary/10 rounded-lg"
                     >
                         <svg
-                            class="w-5 h-5"
+                            class="w-5 h-5 text-accent-primary"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -140,31 +171,37 @@ defineProps({
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
                                 stroke-width="2"
-                                d="M7 8h10M7 12h10M7 16h6"
+                                d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"
                             />
                         </svg>
                     </div>
                 </div>
+                <div>
+                    <div
+                        class="text-3xl font-bold text-text-primary dark:text-text-inverted mb-1"
+                    >
+                        {{ stats.sections }}
+                    </div>
+                    <p class="text-xs text-text-secondary">
+                        Manage sections
+                    </p>
+                </div>
             </Link>
+
+            <!-- Subjects Card -->
             <Link
                 :href="route('admin.subjects.index')"
-                class="card p-3 sm:p-4 block border border-transparent transition-all duration-200 cursor-pointer hover:border-accent-primary hover:bg-accent-primary/5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
+                class="card p-6 rounded-xl shadow-sm border border-transparent hover:shadow-md transition-shadow flex flex-col justify-between h-40 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-primary/40"
             >
-                <div class="flex items-start justify-between gap-4">
-                    <div>
-                        <div class="text-sm text-text-secondary">Subjects</div>
-                        <div class="text-3xl font-semibold mt-1">
-                            {{ stats.subjects }}
-                        </div>
-                        <div class="text-xs text-text-secondary mt-1">
-                            Manage subjects
-                        </div>
-                    </div>
+                <div class="flex justify-between items-start">
+                    <h3 class="text-sm font-medium text-text-secondary">
+                        Subjects
+                    </h3>
                     <div
-                        class="w-10 h-10 rounded-xl bg-accent-primary/10 text-accent-primary flex items-center justify-center"
+                        class="p-2 bg-accent-primary/10 rounded-lg"
                     >
                         <svg
-                            class="w-5 h-5"
+                            class="w-5 h-5 text-accent-primary"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -173,47 +210,104 @@ defineProps({
                                 stroke-linecap="round"
                                 stroke-linejoin="round"
                                 stroke-width="2"
-                                d="M12 6v12m6-6H6"
+                                d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"
                             />
                         </svg>
                     </div>
+                </div>
+                <div>
+                    <div
+                        class="text-3xl font-bold text-text-primary dark:text-text-inverted mb-1"
+                    >
+                        {{ stats.subjects }}
+                    </div>
+                    <p class="text-xs text-text-secondary">
+                        Manage subjects
+                    </p>
                 </div>
             </Link>
         </div>
-        <!--logs table-->
-        <div class="card p-4">
-            <div class="flex items-center justify-between mb-3">
-                <h2 class="text-lg font-semibold">Recent Activity</h2>
-                <div class="flex items-center gap-3">
-                    <span class="text-xs text-text-secondary"
+
+        <!-- Recent Activity Table -->
+        <div
+            class="card rounded-xl shadow-sm border border-border-light dark:border-border-dark overflow-hidden"
+        >
+            <!-- Table Header -->
+            <div
+                class="p-6 border-b border-border-light dark:border-border-dark flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+            >
+                <h2
+                    class="text-lg font-bold text-text-primary dark:text-text-inverted"
+                >
+                    Recent Activity
+                </h2>
+                <div class="flex items-center gap-4 text-sm">
+                    <span class="text-text-secondary"
                         >Latest 7 entries</span
                     >
                     <Link
                         :href="route('admin.logs.index')"
-                        class="btn-ghost text-sm"
+                        class="text-accent-primary font-medium hover:text-accent-muted transition-colors"
                     >
                         Show All
                     </Link>
                 </div>
             </div>
-            <DataTable
-                :headers="['Time', 'User', 'Role', 'Description']"
-                :rows="logs"
-                :links="[]"
-                empty-text="No recent logs."
-            >
-                <template #row="{ row }">
-                    <td
-                        class="px-3 py-2 whitespace-nowrap"
-                        :title="row.created_at"
+
+            <!-- Table Content -->
+            <div class="overflow-x-auto">
+                <table
+                    class="w-full text-left text-sm"
+                >
+                    <thead
+                        class="bg-surface-muted dark:bg-surface-dark-muted text-xs uppercase font-semibold text-text-secondary"
                     >
-                        {{ formatTimeAgo(row.created_at) }}
-                    </td>
-                    <td class="px-3 py-2">{{ row.user?.name || "N/A" }}</td>
-                    <td class="px-3 py-2 capitalize">{{ row.role }}</td>
-                    <td class="px-3 py-2">{{ row.description }}</td>
-                </template>
-            </DataTable>
+                        <tr>
+                            <th class="px-6 py-4">Time</th>
+                            <th class="px-6 py-4">User</th>
+                            <th class="px-6 py-4">Role</th>
+                            <th class="px-6 py-4">Description</th>
+                        </tr>
+                    </thead>
+                    <tbody
+                        class="divide-y divide-border-light dark:divide-border-dark"
+                    >
+                        <tr v-if="!logs.length">
+                            <td
+                                colspan="4"
+                                class="px-6 py-8 text-center text-text-secondary"
+                            >
+                                No recent logs.
+                            </td>
+                        </tr>
+                        <tr
+                            v-for="log in logs"
+                            :key="log.id"
+                            class="hover:bg-surface-muted dark:hover:bg-surface-dark-muted transition-colors"
+                        >
+                            <td
+                                class="px-6 py-4 font-medium whitespace-nowrap"
+                                :title="log.created_at"
+                            >
+                                {{ formatTimeAgo(log.created_at) }}
+                            </td>
+                            <td class="px-6 py-4">
+                                {{ log.user?.name || "N/A" }}
+                            </td>
+                            <td class="px-6 py-4">
+                                <span
+                                    class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-accent-primary/10 text-accent-primary"
+                                >
+                                    {{ log.role }}
+                                </span>
+                            </td>
+                            <td class="px-6 py-4">
+                                {{ log.description }}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
         </div>
     </AdminLayout>
 </template>

@@ -69,11 +69,11 @@ const shouldShowLoading = computed(() => {
                     </div>
 
                     <!-- Loading Text with pulse animation -->
-                    <p class="loading-text">
+                    <!-- <p class="loading-text">
                         Loading<span class="loading-dots">
                             <span>.</span><span>.</span><span>.</span>
                         </span>
-                    </p>
+                    </p> -->
                 </div>
             </div>
         </Transition>
@@ -87,13 +87,10 @@ const shouldShowLoading = computed(() => {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(0, 0, 0, 0.3);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
+     background: rgba(0, 0, 0, 0.3);
 }
 
 .dark .loading-overlay {
-    background: rgba(0, 0, 0, 0.5);
 }
 
 .loading-container {

@@ -24,21 +24,21 @@ createInertiaApp({
     setup({ el, App, props, plugin }) {
         initTheme();
 
-        // router.on("start", () => {
-        //     start();
-        // });
+        router.on("start", () => {
+            start();
+        });
 
-        // router.on("finish", () => {
-        //     stop();
-        // });
+        router.on("finish", () => {
+            stop();
+        });
 
-        // router.on("success", () => {
-        //     stop();
-        // });
+        router.on("success", () => {
+            stop();
+        });
 
-        // router.on("error", () => {
-        //     stop();
-        // });
+        router.on("error", () => {
+            stop();
+        });
 
         const app = createApp({
             render: () => h("div", [h(App, props), h(LoadingIndicator)]),
@@ -49,6 +49,6 @@ createInertiaApp({
     progress: {
         color: "#086fff",
         includeCSS: false,
-        showSpinner: true,
+        showSpinner: false,
     },
 });
