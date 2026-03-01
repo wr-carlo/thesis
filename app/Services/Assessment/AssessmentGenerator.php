@@ -40,6 +40,7 @@ class AssessmentGenerator
                         'type' => 'multiple_choice',
                         'choices' => json_encode($question['choices']),
                         'correct_answer' => $question['correct_answer'],
+                        'bloom_level' => $question['bloom_level'] ?? null,
                     ]);
                 }
             }
@@ -53,6 +54,7 @@ class AssessmentGenerator
                         'type' => 'identification',
                         'choices' => null,
                         'correct_answer' => $question['correct_answer'],
+                        'bloom_level' => $question['bloom_level'] ?? null,
                     ]);
                 }
             }
@@ -66,6 +68,7 @@ class AssessmentGenerator
                         'type' => 'true_or_false',
                         'choices' => null,
                         'correct_answer' => $question['correct_answer'],
+                        'bloom_level' => $question['bloom_level'] ?? null,
                     ]);
                 }
             }
@@ -83,4 +86,3 @@ class AssessmentGenerator
         }
     }
 }
-

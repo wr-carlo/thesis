@@ -47,7 +47,8 @@ class StoreLessonRequest extends FormRequest
             'multiple_choice_count' => 'required|integer|min:0',
             'identification_count' => 'required|integer|min:0',
             'true_or_false_count' => 'required|integer|min:0',
-            'difficulty' => 'required|in:easy,medium,hard',
+            'bloom_levels' => 'required|array|min:1',
+            'bloom_levels.*' => 'in:remember,understand,apply,analyze,evaluate,create',
         ];
     }
 
@@ -75,8 +76,10 @@ class StoreLessonRequest extends FormRequest
             'true_or_false_count.required' => 'Please specify number of true/false questions.',
             'true_or_false_count.integer' => 'True/false count must be a number.',
             'true_or_false_count.min' => 'True/false count must be at least 0.',
-            'difficulty.required' => 'Please select a difficulty level.',
-            'difficulty.in' => 'Difficulty must be easy, medium, or hard.',
+            'bloom_levels.required' => 'Please select at least one Bloom\'s Taxonomy level.',
+            'bloom_levels.array' => 'Bloom\'s levels must be an array.',
+            'bloom_levels.min' => 'Please select at least one Bloom\'s Taxonomy level.',
+            'bloom_levels.*.in' => 'Invalid Bloom\'s Taxonomy level selected.',
         ];
     }
 }

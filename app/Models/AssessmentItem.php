@@ -15,6 +15,7 @@ class AssessmentItem extends Model
         'type',
         'choices',
         'correct_answer',
+        'bloom_level',
     ];
 
     protected $casts = [

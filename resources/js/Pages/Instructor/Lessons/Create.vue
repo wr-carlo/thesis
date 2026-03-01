@@ -209,26 +209,54 @@
                                     </div>
                                 </div>
 
-                                <!-- Difficulty Level -->
-                                <div class="mt-4">
-                                    <InputLabel
-                                        for="difficulty"
-                                        value="Difficulty Level"
-                                    />
-                                    <select
-                                        id="difficulty"
-                                        v-model="form.difficulty"
-                                        class="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
-                                        required
-                                    >
-                                        <option value="easy">Easy</option>
-                                        <option value="medium">Medium</option>
-                                        <option value="hard">Hard</option>
-                                    </select>
+                                <!-- Bloom's Taxonomy Levels -->
+                                <div class="mt-6">
+                                    <InputLabel value="Bloom's Taxonomy Level" />
+                                    <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 mb-3">
+                                        Select one or more cognitive levels for question generation. Lower levels = easier questions, higher levels = harder questions.
+                                    </p>
+
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        <label
+                                            v-for="level in bloomLevels"
+                                            :key="level.value"
+                                            class="flex items-start p-3 rounded-lg border-2 cursor-pointer transition-all duration-200"
+                                            :class="isBloomSelected(level.value)
+                                                ? `${level.borderActiveClass} ${level.bgActiveClass}`
+                                                : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                :value="level.value"
+                                                v-model="form.bloom_levels"
+                                                class="mt-0.5 rounded border-gray-300 dark:border-gray-600 text-indigo-600 shadow-sm focus:ring-indigo-500 dark:focus:ring-indigo-600 dark:bg-gray-900"
+                                            />
+                                            <div class="ml-3 flex-1">
+                                                <div class="flex items-center gap-2">
+                                                    <span :class="level.badgeClass" class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold">
+                                                        {{ level.label }}
+                                                    </span>
+                                                    <span class="text-xs text-gray-400 dark:text-gray-500">
+                                                        Level {{ level.order }}
+                                                    </span>
+                                                </div>
+                                                <p class="text-xs text-gray-500 dark:text-gray-400 mt-1 leading-relaxed">
+                                                    {{ level.description }}
+                                                </p>
+                                            </div>
+                                        </label>
+                                    </div>
+
                                     <InputError
                                         class="mt-2"
-                                        :message="form.errors.difficulty"
+                                        :message="form.errors.bloom_levels"
                                     />
+                                    <p
+                                        v-if="form.bloom_levels.length === 0"
+                                        class="mt-2 text-sm text-red-600 dark:text-red-400"
+                                    >
+                                        Please select at least one Bloom's Taxonomy level.
+                                    </p>
                                 </div>
                             </div>
 
@@ -236,7 +264,7 @@
                             <div class="flex items-center justify-end">
                                 <PrimaryButton
                                     type="submit"
-                                    :disabled="form.processing"
+                                    :disabled="form.processing || form.bloom_levels.length === 0"
                                     class="ml-4"
                                 >
                                     <span v-if="form.processing"
@@ -278,6 +306,68 @@ const props = defineProps({
     subjects: Array,
 });
 
+// Bloom's Taxonomy levels configuration
+const bloomLevels = [
+    {
+        value: "remember",
+        label: "Remember",
+        order: 1,
+        description: "Recall facts, terms, definitions, and basic concepts",
+        badgeClass: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300",
+        borderActiveClass: "border-emerald-400 dark:border-emerald-600",
+        bgActiveClass: "bg-emerald-50 dark:bg-emerald-900/10",
+    },
+    {
+        value: "understand",
+        label: "Understand",
+        order: 2,
+        description: "Explain, summarize, paraphrase, and interpret ideas",
+        badgeClass: "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300",
+        borderActiveClass: "border-blue-400 dark:border-blue-600",
+        bgActiveClass: "bg-blue-50 dark:bg-blue-900/10",
+    },
+    {
+        value: "apply",
+        label: "Apply",
+        order: 3,
+        description: "Use knowledge to solve problems in new situations",
+        badgeClass: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300",
+        borderActiveClass: "border-yellow-400 dark:border-yellow-600",
+        bgActiveClass: "bg-yellow-50 dark:bg-yellow-900/10",
+    },
+    {
+        value: "analyze",
+        label: "Analyze",
+        order: 4,
+        description: "Compare, contrast, and examine relationships",
+        badgeClass: "bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300",
+        borderActiveClass: "border-orange-400 dark:border-orange-600",
+        bgActiveClass: "bg-orange-50 dark:bg-orange-900/10",
+    },
+    {
+        value: "evaluate",
+        label: "Evaluate",
+        order: 5,
+        description: "Judge, justify, critique, and defend decisions",
+        badgeClass: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300",
+        borderActiveClass: "border-red-400 dark:border-red-600",
+        bgActiveClass: "bg-red-50 dark:bg-red-900/10",
+    },
+    {
+        value: "create",
+        label: "Create",
+        order: 6,
+        description: "Design, propose, construct, and formulate new ideas",
+        badgeClass: "bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300",
+        borderActiveClass: "border-purple-400 dark:border-purple-600",
+        bgActiveClass: "bg-purple-50 dark:bg-purple-900/10",
+    },
+];
+
+const isBloomSelected = (value) => {
+    return form.bloom_levels.includes(value);
+};
+
 const form = useForm({
     subject_id: "",
     title: "",
@@ -285,7 +375,7 @@ const form = useForm({
     multiple_choice_count: 5,
     identification_count: 3,
     true_or_false_count: 2,
-    difficulty: "medium",
+    bloom_levels: ["remember", "understand"],
 });
 
 const fileName = ref("");
@@ -323,6 +413,10 @@ const handleDrop = (event) => {
 };
 
 const submitForm = () => {
+    if (form.bloom_levels.length === 0) {
+        return;
+    }
+
     showProcessingModal.value = true;
     uploadProgress.value = 10;
     currentStage.value = "Uploading file...";
@@ -354,6 +448,7 @@ const handleClose = () => {
 };
 
 const cancelUpload = () => {
+    form.cancel(); // Actually abort the in-progress HTTP request
     showProcessingModal.value = false;
     form.reset();
     fileName.value = "";

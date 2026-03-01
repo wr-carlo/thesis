@@ -12,15 +12,18 @@ class AIServiceManager
     protected ContentChunker $chunker;
     protected ContextSummarizer $summarizer;
     protected TokenCalculator $tokenCalculator;
+    protected BloomsValidator $bloomsValidator;
 
     public function __construct(
         ContentChunker $chunker,
         ContextSummarizer $summarizer,
-        TokenCalculator $tokenCalculator
+        TokenCalculator $tokenCalculator,
+        BloomsValidator $bloomsValidator
     ) {
         $this->chunker = $chunker;
         $this->summarizer = $summarizer;
         $this->tokenCalculator = $tokenCalculator;
+        $this->bloomsValidator = $bloomsValidator;
 
         $this->initializeProviders();
     }
@@ -107,12 +110,20 @@ class AIServiceManager
     {
         $lastException = null;
         $fallbackOrder = config('ai_models.fallback_order');
+        $usedProvider = null;
 
         foreach ($fallbackOrder as $providerName) {
             $provider = $this->providers[$providerName];
 
             try {
                 $result = $provider->generateAssessment($content, $config);
+                $usedProvider = $providerName;
+
+                // Run Bloom's validation if bloom_levels are specified
+                $bloomLevels = $config['bloom_levels'] ?? null;
+                if ($bloomLevels) {
+                    $result = $this->bloomsValidator->validate($result, $bloomLevels, $provider);
+                }
 
                 return [
                     'success' => true,
@@ -125,6 +136,13 @@ class AIServiceManager
                 // Retry once before moving to next provider
                 try {
                     $result = $provider->generateAssessment($content, $config);
+                    $usedProvider = $providerName;
+
+                    // Run Bloom's validation on retry result too
+                    $bloomLevels = $config['bloom_levels'] ?? null;
+                    if ($bloomLevels) {
+                        $result = $this->bloomsValidator->validate($result, $bloomLevels, $provider);
+                    }
 
                     return [
                         'success' => true,
@@ -176,9 +194,17 @@ class AIServiceManager
                     $questionsPerChunk
                 );
 
+                $combinedResult = $this->combineChunkResults($allResults);
+
+                // Run Bloom's validation on combined results
+                $bloomLevels = $config['bloom_levels'] ?? null;
+                if ($bloomLevels) {
+                    $combinedResult = $this->bloomsValidator->validate($combinedResult, $bloomLevels, $provider);
+                }
+
                 return [
                     'success' => true,
-                    'data' => $this->combineChunkResults($allResults),
+                    'data' => $combinedResult,
                     'provider_used' => $providerName,
                     'chunks_processed' => $totalChunks,
                 ];
@@ -261,7 +287,7 @@ class AIServiceManager
             'multiple_choice_count' => max(0, $mcForChunk),
             'identification_count' => max(0, $idForChunk),
             'true_or_false_count' => max(0, $tfForChunk),
-            'difficulty' => $config['difficulty'] ?? 'medium',
+            'bloom_levels' => $config['bloom_levels'] ?? ['remember', 'understand'],
         ];
     }
 

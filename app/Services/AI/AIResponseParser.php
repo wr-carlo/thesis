@@ -33,9 +33,9 @@ class AIResponseParser
         $this->validateTrueOrFalseQuestions($response['true_or_false']);
 
         return [
-            'multiple_choice' => $response['multiple_choice'],
-            'identification' => $response['identification'],
-            'true_or_false' => $response['true_or_false'],
+            'multiple_choice' => $this->normalizeBloomLevels($response['multiple_choice']),
+            'identification' => $this->normalizeBloomLevels($response['identification']),
+            'true_or_false' => $this->normalizeBloomLevels($response['true_or_false']),
         ];
     }
 
@@ -91,5 +91,23 @@ class AIResponseParser
             }
         }
     }
-}
 
+    /**
+     * Normalize bloom_level fields in questions.
+     * If bloom_level is missing, set to null. If present, validate it.
+     */
+    protected function normalizeBloomLevels(array $questions): array
+    {
+        $validLevels = BloomsTaxonomyConfig::getValidLevels();
+
+        return array_map(function ($question) use ($validLevels) {
+            if (isset($question['bloom_level']) && is_string($question['bloom_level'])) {
+                $level = strtolower(trim($question['bloom_level']));
+                $question['bloom_level'] = in_array($level, $validLevels) ? $level : null;
+            } else {
+                $question['bloom_level'] = null;
+            }
+            return $question;
+        }, $questions);
+    }
+}

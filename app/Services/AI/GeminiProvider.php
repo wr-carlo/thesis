@@ -36,9 +36,9 @@ class GeminiProvider implements AIServiceInterface
         $multipleChoiceCount = $options['multiple_choice_count'] ?? 0;
         $identificationCount = $options['identification_count'] ?? 0;
         $trueOrFalseCount = $options['true_or_false_count'] ?? 0;
-        $difficulty = $options['difficulty'] ?? 'medium';
+        $bloomLevels = $options['bloom_levels'] ?? ['remember', 'understand'];
 
-        $prompt = "Generate assessment questions based on this lesson content:\n\n";
+        $prompt = "You are an expert assessment generator aligned with Bloom's Taxonomy. Generate educational assessment questions based on the provided lesson content.\n\n";
 
         if (!empty($previousContext)) {
             $prompt .= "IMPORTANT: The following sections have already been covered. Avoid duplicating questions from these topics:\n\n";
@@ -51,30 +51,12 @@ class GeminiProvider implements AIServiceInterface
         $prompt .= "- Multiple Choice: {$multipleChoiceCount} questions\n";
         $prompt .= "- Identification: {$identificationCount} questions\n";
         $prompt .= "- True/False: {$trueOrFalseCount} questions\n";
-        $prompt .= "- Difficulty Level: {$difficulty}\n\n";
+
+        // Add Bloom's Taxonomy instructions
+        $prompt .= BloomsTaxonomyConfig::getPromptInstructions($bloomLevels);
 
         $prompt .= "Return ONLY a valid JSON response with this exact structure:\n";
-        $prompt .= "{\n";
-        $prompt .= '  "multiple_choice": [' . "\n";
-        $prompt .= '    {' . "\n";
-        $prompt .= '      "question": "Question text here",' . "\n";
-        $prompt .= '      "choices": ["Choice A", "Choice B", "Choice C", "Choice D"],' . "\n";
-        $prompt .= '      "correct_answer": "Choice A"' . "\n";
-        $prompt .= '    }' . "\n";
-        $prompt .= '  ],' . "\n";
-        $prompt .= '  "identification": [' . "\n";
-        $prompt .= '    {' . "\n";
-        $prompt .= '      "question": "Question text here",' . "\n";
-        $prompt .= '      "correct_answer": "Answer text"' . "\n";
-        $prompt .= '    }' . "\n";
-        $prompt .= '  ],' . "\n";
-        $prompt .= '  "true_or_false": [' . "\n";
-        $prompt .= '    {' . "\n";
-        $prompt .= '      "question": "Statement text here",' . "\n";
-        $prompt .= '      "correct_answer": "True" or "False"' . "\n";
-        $prompt .= '    }' . "\n";
-        $prompt .= '  ]' . "\n";
-        $prompt .= "}\n";
+        $prompt .= BloomsTaxonomyConfig::getJsonStructure();
 
         return $prompt;
     }

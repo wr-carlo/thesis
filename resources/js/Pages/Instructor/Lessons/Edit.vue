@@ -433,12 +433,21 @@
                                     class="flex justify-between items-start mb-3"
                                 >
                                     <div class="flex-1">
-                                        <span
-                                            class="text-sm font-medium text-gray-500 dark:text-gray-400"
-                                        >
-                                            Question {{ index + 1 }} -
-                                            {{ formatType(item.type) }}
-                                        </span>
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <span
+                                                class="text-sm font-medium text-gray-500 dark:text-gray-400"
+                                            >
+                                                Question {{ index + 1 }} -
+                                                {{ formatType(item.type) }}
+                                            </span>
+                                            <span
+                                                v-if="item.bloom_level"
+                                                :class="getBloomBadgeClass(item.bloom_level)"
+                                                class="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold"
+                                            >
+                                                {{ formatBloomLevel(item.bloom_level) }}
+                                            </span>
+                                        </div>
                                     </div>
                                     <button
                                         @click="deleteItem(index)"
@@ -637,6 +646,25 @@ const items = ref(
 );
 const saving = ref(false);
 const selectedSectionIds = ref([...(props.selectedSectionIds || [])]);
+
+// Bloom's Taxonomy badge styling
+const bloomBadgeStyles = {
+    remember: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300",
+    understand: "bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300",
+    apply: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300",
+    analyze: "bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-300",
+    evaluate: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300",
+    create: "bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300",
+};
+
+const getBloomBadgeClass = (level) => {
+    return bloomBadgeStyles[level] || "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300";
+};
+
+const formatBloomLevel = (level) => {
+    if (!level) return '';
+    return level.charAt(0).toUpperCase() + level.slice(1);
+};
 
 // Add Question Form State
 const showAddForm = ref(false);
@@ -864,6 +892,7 @@ const addQuestion = () => {
             question: newQuestion.value.question.trim(),
             choices: filledChoices,
             correct_answer: newQuestion.value.correct_answer,
+            bloom_level: null,
         });
     } else if (newQuestion.value.type === "true_or_false") {
         items.value.push({
@@ -871,6 +900,7 @@ const addQuestion = () => {
             question: newQuestion.value.question.trim(),
             choices: null,
             correct_answer: newQuestion.value.correct_answer,
+            bloom_level: null,
         });
     } else {
         // Identification
@@ -879,6 +909,7 @@ const addQuestion = () => {
             question: newQuestion.value.question.trim(),
             choices: null,
             correct_answer: newQuestion.value.correct_answer.trim(),
+            bloom_level: null,
         });
     }
 
