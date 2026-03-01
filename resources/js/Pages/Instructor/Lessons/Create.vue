@@ -448,6 +448,7 @@ const handleClose = () => {
 };
 
 const cancelUpload = () => {
+    form.cancel(); // Actually abort the in-progress HTTP request
     showProcessingModal.value = false;
     form.reset();
     fileName.value = "";
