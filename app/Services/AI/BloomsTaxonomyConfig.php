@@ -98,11 +98,12 @@ class BloomsTaxonomyConfig
     }
 
     /**
-     * Build prompt instructions based on selected Bloom's levels.
+     * Build prompt instructions based on question distribution.
      */
-    public static function getPromptInstructions(array $selectedLevels): string
+    public static function getPromptInstructions(array $questionDistribution): string
     {
         $validLevels = static::getValidLevels();
+        $selectedLevels = array_keys($questionDistribution);
         $selected = array_intersect($selectedLevels, $validLevels);
 
         if (empty($selected)) {
@@ -114,17 +115,27 @@ class BloomsTaxonomyConfig
         $excludedLabels = array_map(fn($l) => static::$levels[$l]['label'], $excludedLevels);
 
         $prompt = "\n🎯 Bloom's Taxonomy Cognitive Levels Required: " . implode(', ', $selectedLabels) . "\n\n";
-        $prompt .= "IMPORTANT INSTRUCTIONS FOR QUESTION GENERATION:\n\n";
+        $prompt .= "IMPORTANT INSTRUCTIONS FOR QUESTION GENERATION EXACT AMOUNTS:\n\n";
 
         foreach ($selected as $level) {
             $info = static::$levels[$level];
             $verbs = implode(', ', $info['action_verbs']);
+            
+            $counts = $questionDistribution[$level] ?? ['mcq' => 0, 'identification' => 0, 'tf' => 0];
+            $mcq = $counts['mcq'] ?? 0;
+            $id = $counts['identification'] ?? 0;
+            $tf = $counts['tf'] ?? 0;
+            
+            if ($mcq == 0 && $id == 0 && $tf == 0) continue;
 
             $prompt .= "Level {$info['order']} - {$info['label']} ({$info['description']}):\n";
+            $prompt .= "  • Must generate exactly {$mcq} Multiple Choice questions.\n";
+            $prompt .= "  • Must generate exactly {$id} Identification questions.\n";
+            $prompt .= "  • Must generate exactly {$tf} True/False questions.\n";
             $prompt .= "  • Use these action verbs to frame questions: {$verbs}\n";
-            $prompt .= "  • Multiple Choice: {$info['mc_guideline']}\n";
-            $prompt .= "  • Identification: {$info['id_guideline']}\n";
-            $prompt .= "  • True/False: {$info['tf_guideline']}\n\n";
+            if ($mcq > 0) $prompt .= "  • Multiple Choice Guideline: {$info['mc_guideline']}\n";
+            if ($id > 0) $prompt .= "  • Identification Guideline: {$info['id_guideline']}\n";
+            if ($tf > 0) $prompt .= "  • True/False Guideline: {$info['tf_guideline']}\n\n";
         }
 
         if (!empty($excludedLevels)) {
@@ -133,7 +144,7 @@ class BloomsTaxonomyConfig
 
         $prompt .= "⚠️ Each question MUST include a \"bloom_level\" field indicating its cognitive level.\n";
         $prompt .= "   Valid values for bloom_level: " . implode(', ', $selected) . "\n";
-        $prompt .= "   Distribute questions across the selected levels. Aim for a balanced mix.\n\n";
+        $prompt .= "   Ensure that you generate EXACTLY the requested amount for each question type per level.\n\n";
 
         return $prompt;
     }

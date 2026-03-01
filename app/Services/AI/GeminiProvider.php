@@ -33,10 +33,18 @@ class GeminiProvider implements AIServiceInterface
 
     protected function buildPrompt(string $content, string $previousContext, array $options): string
     {
-        $multipleChoiceCount = $options['multiple_choice_count'] ?? 0;
-        $identificationCount = $options['identification_count'] ?? 0;
-        $trueOrFalseCount = $options['true_or_false_count'] ?? 0;
+        $distribution = $options['question_distribution'] ?? [];
         $bloomLevels = $options['bloom_levels'] ?? ['remember', 'understand'];
+
+        $totalMcq = 0;
+        $totalId = 0;
+        $totalTf = 0;
+
+        foreach ($distribution as $counts) {
+            $totalMcq += $counts['mcq'] ?? 0;
+            $totalId += $counts['identification'] ?? 0;
+            $totalTf += $counts['tf'] ?? 0;
+        }
 
         $prompt = "You are an expert assessment generator aligned with Bloom's Taxonomy. Generate educational assessment questions based on the provided lesson content.\n\n";
 
@@ -47,13 +55,13 @@ class GeminiProvider implements AIServiceInterface
         }
 
         $prompt .= $content . "\n\n";
-        $prompt .= "Question Requirements:\n";
-        $prompt .= "- Multiple Choice: {$multipleChoiceCount} questions\n";
-        $prompt .= "- Identification: {$identificationCount} questions\n";
-        $prompt .= "- True/False: {$trueOrFalseCount} questions\n";
+        $prompt .= "Question Requirements (Total):\n";
+        $prompt .= "- Multiple Choice: {$totalMcq} questions\n";
+        $prompt .= "- Identification: {$totalId} questions\n";
+        $prompt .= "- True/False: {$totalTf} questions\n";
 
-        // Add Bloom's Taxonomy instructions
-        $prompt .= BloomsTaxonomyConfig::getPromptInstructions($bloomLevels);
+        // Add Bloom's Taxonomy instructions with specific distribution mapping
+        $prompt .= BloomsTaxonomyConfig::getPromptInstructions($distribution);
 
         $prompt .= "Return ONLY a valid JSON response with this exact structure:\n";
         $prompt .= BloomsTaxonomyConfig::getJsonStructure();

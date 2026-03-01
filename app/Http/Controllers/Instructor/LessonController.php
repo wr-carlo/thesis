@@ -289,12 +289,9 @@ class LessonController extends Controller
                 throw $e;
             }
 
-            // Stage 4: AI Generation
             try {
                 $config = [
-                    'multiple_choice_count' => $request->multiple_choice_count,
-                    'identification_count' => $request->identification_count,
-                    'true_or_false_count' => $request->true_or_false_count,
+                    'question_distribution' => $request->question_distribution,
                     'bloom_levels' => $request->bloom_levels,
                 ];
 
@@ -630,6 +627,11 @@ class LessonController extends Controller
             // Sync sections to assessment
             if ($request->has('section_ids')) {
                 $assessment->sections()->sync($request->section_ids ?? []);
+            }
+
+            // Update status based on request
+            if ($request->has('status') && in_array($request->status, ['draft', 'published'])) {
+                $assessment->update(['status' => $request->status]);
             }
 
             // Log saving
