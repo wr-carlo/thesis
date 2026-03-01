@@ -33,10 +33,18 @@ class GroqProvider implements AIServiceInterface
 
     protected function buildPrompt(string $content, string $previousContext, array $options): array
     {
-        $multipleChoiceCount = $options['multiple_choice_count'] ?? 0;
-        $identificationCount = $options['identification_count'] ?? 0;
-        $trueOrFalseCount = $options['true_or_false_count'] ?? 0;
+        $distribution = $options['question_distribution'] ?? [];
         $bloomLevels = $options['bloom_levels'] ?? ['remember', 'understand'];
+
+        $totalMcq = 0;
+        $totalId = 0;
+        $totalTf = 0;
+
+        foreach ($distribution as $counts) {
+            $totalMcq += $counts['mcq'] ?? 0;
+            $totalId += $counts['identification'] ?? 0;
+            $totalTf += $counts['tf'] ?? 0;
+        }
 
         $systemPrompt = "You are an expert assessment generator aligned with Bloom's Taxonomy. "
             . "Generate educational assessment questions based on the provided lesson content. "
@@ -52,13 +60,13 @@ class GroqProvider implements AIServiceInterface
         }
 
         $userPrompt .= $content . "\n\n";
-        $userPrompt .= "Question Requirements:\n";
-        $userPrompt .= "- Multiple Choice: {$multipleChoiceCount} questions\n";
-        $userPrompt .= "- Identification: {$identificationCount} questions\n";
-        $userPrompt .= "- True/False: {$trueOrFalseCount} questions\n";
+        $userPrompt .= "Question Requirements (Total):\n";
+        $userPrompt .= "- Multiple Choice: {$totalMcq} questions\n";
+        $userPrompt .= "- Identification: {$totalId} questions\n";
+        $userPrompt .= "- True/False: {$totalTf} questions\n";
 
-        // Add Bloom's Taxonomy instructions
-        $userPrompt .= BloomsTaxonomyConfig::getPromptInstructions($bloomLevels);
+        // Add Bloom's Taxonomy instructions with specific distribution mapping
+        $userPrompt .= BloomsTaxonomyConfig::getPromptInstructions($distribution);
 
         $userPrompt .= "Return ONLY a valid JSON response with this exact structure:\n";
         $userPrompt .= BloomsTaxonomyConfig::getJsonStructure();

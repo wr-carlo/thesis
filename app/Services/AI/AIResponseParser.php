@@ -2,6 +2,8 @@
 
 namespace App\Services\AI;
 
+use Illuminate\Support\Facades\Log;
+
 class AIResponseParser
 {
     /**
@@ -13,11 +15,24 @@ class AIResponseParser
      */
     public function parse(array $response): array
     {
+        Log::info('AIResponseParser: Received data for parsing', [
+            'keys' => array_keys($response),
+            'multiple_choice_count' => count($response['multiple_choice'] ?? []),
+            'identification_count' => count($response['identification'] ?? []),
+            'true_or_false_count' => count($response['true_or_false'] ?? []),
+        ]);
+
         // Validate structure
         if (!isset($response['multiple_choice']) || 
             !isset($response['identification']) || 
             !isset($response['true_or_false'])) {
-            throw new \Exception('Invalid AI response structure: missing required keys');
+            Log::error('AIResponseParser: Missing required keys', [
+                'has_multiple_choice' => isset($response['multiple_choice']),
+                'has_identification' => isset($response['identification']),
+                'has_true_or_false' => isset($response['true_or_false']),
+                'actual_keys' => array_keys($response),
+            ]);
+            throw new \Exception('Invalid AI response structure: missing required keys. Keys found: ' . implode(', ', array_keys($response)));
         }
 
         // Validate arrays

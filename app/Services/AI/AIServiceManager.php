@@ -5,6 +5,7 @@ namespace App\Services\AI;
 use App\Services\ContentProcessing\ContentChunker;
 use App\Services\ContentProcessing\ContextSummarizer;
 use App\Services\ContentProcessing\TokenCalculator;
+use Illuminate\Support\Facades\Log;
 
 class AIServiceManager
 {
@@ -119,10 +120,24 @@ class AIServiceManager
                 $result = $provider->generateAssessment($content, $config);
                 $usedProvider = $providerName;
 
+                Log::info('AIServiceManager: Raw AI result before validation', [
+                    'provider' => $providerName,
+                    'result_keys' => array_keys($result),
+                    'mc_count' => count($result['multiple_choice'] ?? []),
+                    'id_count' => count($result['identification'] ?? []),
+                    'tf_count' => count($result['true_or_false'] ?? []),
+                ]);
+
                 // Run Bloom's validation if bloom_levels are specified
                 $bloomLevels = $config['bloom_levels'] ?? null;
                 if ($bloomLevels) {
-                    $result = $this->bloomsValidator->validate($result, $bloomLevels, $provider);
+                    $result = $this->bloomsValidator->validate($result, $bloomLevels);
+
+                    Log::info('AIServiceManager: Result after Bloom\'s validation', [
+                        'mc_count' => count($result['multiple_choice'] ?? []),
+                        'id_count' => count($result['identification'] ?? []),
+                        'tf_count' => count($result['true_or_false'] ?? []),
+                    ]);
                 }
 
                 return [
@@ -141,7 +156,7 @@ class AIServiceManager
                     // Run Bloom's validation on retry result too
                     $bloomLevels = $config['bloom_levels'] ?? null;
                     if ($bloomLevels) {
-                        $result = $this->bloomsValidator->validate($result, $bloomLevels, $provider);
+                        $result = $this->bloomsValidator->validate($result, $bloomLevels);
                     }
 
                     return [
@@ -174,9 +189,15 @@ class AIServiceManager
         $chunks = $chunkingResult['chunks'];
         $totalChunks = $chunkingResult['total_chunks'];
 
-        $totalQuestions = ($config['multiple_choice_count'] ?? 0)
-            + ($config['identification_count'] ?? 0)
-            + ($config['true_or_false_count'] ?? 0);
+        // Calculate total questions from distribution matrix
+        $totalQuestions = 0;
+        if (isset($config['question_distribution'])) {
+            foreach ($config['question_distribution'] as $levelCounts) {
+                $totalQuestions += ($levelCounts['mcq'] ?? 0)
+                    + ($levelCounts['identification'] ?? 0)
+                    + ($levelCounts['tf'] ?? 0);
+            }
+        }
 
         $questionsPerChunk = $this->chunker->distributeQuestions($totalQuestions, $totalChunks);
 
@@ -199,7 +220,7 @@ class AIServiceManager
                 // Run Bloom's validation on combined results
                 $bloomLevels = $config['bloom_levels'] ?? null;
                 if ($bloomLevels) {
-                    $combinedResult = $this->bloomsValidator->validate($combinedResult, $bloomLevels, $provider);
+                    $combinedResult = $this->bloomsValidator->validate($combinedResult, $bloomLevels);
                 }
 
                 return [
@@ -269,24 +290,53 @@ class AIServiceManager
      */
     protected function distributeQuestionsForChunk(array $config, int $totalQuestionsForChunk): array
     {
-        $mcCount = $config['multiple_choice_count'] ?? 0;
-        $idCount = $config['identification_count'] ?? 0;
-        $tfCount = $config['true_or_false_count'] ?? 0;
-
-        $totalRequested = $mcCount + $idCount + $tfCount;
+        $distribution = $config['question_distribution'] ?? [];
+        
+        // Calculate total requested across all levels and types
+        $totalRequested = 0;
+        foreach ($distribution as $counts) {
+            $totalRequested += ($counts['mcq'] ?? 0) + ($counts['identification'] ?? 0) + ($counts['tf'] ?? 0);
+        }
 
         if ($totalRequested === 0) {
             return $config;
         }
+        
+        $chunkDistribution = [];
+        $remainingQuestions = $totalQuestionsForChunk;
 
-        $mcForChunk = (int) round(($mcCount / $totalRequested) * $totalQuestionsForChunk);
-        $idForChunk = (int) round(($idCount / $totalRequested) * $totalQuestionsForChunk);
-        $tfForChunk = $totalQuestionsForChunk - $mcForChunk - $idForChunk;
+        // Pro-rata distribution per level and per type
+        foreach ($distribution as $level => $counts) {
+            $chunkDistribution[$level] = [
+                'mcq' => (int) round((($counts['mcq'] ?? 0) / $totalRequested) * $totalQuestionsForChunk),
+                'identification' => (int) round((($counts['identification'] ?? 0) / $totalRequested) * $totalQuestionsForChunk),
+                'tf' => (int) round((($counts['tf'] ?? 0) / $totalRequested) * $totalQuestionsForChunk),
+            ];
+            $remainingQuestions -= ($chunkDistribution[$level]['mcq'] + $chunkDistribution[$level]['identification'] + $chunkDistribution[$level]['tf']);
+        }
+        
+        // Adjust any rounding errors to match exact $totalQuestionsForChunk if possible
+        // This is a naive adjustment on the first available non-zero count to ensure total matches exactly
+        if ($remainingQuestions !== 0) {
+            foreach ($chunkDistribution as $level => &$counts) {
+                foreach (['mcq', 'identification', 'tf'] as $type) {
+                    if ($counts[$type] > 0 || $remainingQuestions > 0) {
+                        $adjustment = min(abs($remainingQuestions), $counts[$type]);
+                        if ($remainingQuestions > 0) {
+                            $counts[$type]++;
+                            $remainingQuestions--;
+                        } elseif ($remainingQuestions < 0 && $counts[$type] > 0) {
+                            $counts[$type]--;
+                            $remainingQuestions++;
+                        }
+                    }
+                    if ($remainingQuestions === 0) break 2;
+                }
+            }
+        }
 
         return [
-            'multiple_choice_count' => max(0, $mcForChunk),
-            'identification_count' => max(0, $idForChunk),
-            'true_or_false_count' => max(0, $tfForChunk),
+            'question_distribution' => $chunkDistribution,
             'bloom_levels' => $config['bloom_levels'] ?? ['remember', 'understand'],
         ];
     }
