@@ -51,10 +51,8 @@ const selectOption = (option) => {
 const clearSelection = () => {
     emit("update:modelValue", null);
     search.value = "";
-    nextTick(() => {
-        inputRef.value?.focus();
-        isOpen.value = true;
-    });
+    isOpen.value = true;
+    nextTick(() => inputRef.value?.focus());
 };
 
 const openDropdown = () => {
@@ -63,7 +61,15 @@ const openDropdown = () => {
     }
 };
 
-// Close on outside click
+
+const handleSearchAreaClick = () => {
+    if (!props.disabled) {
+        isOpen.value = true;
+        nextTick(() => inputRef.value?.focus());
+    }
+};
+
+// Close on outside click (use mousedown to avoid same-tick conflict when opening)
 const handleClickOutside = (e) => {
     if (containerRef.value && !containerRef.value.contains(e.target)) {
         isOpen.value = false;
@@ -71,11 +77,11 @@ const handleClickOutside = (e) => {
 };
 
 onMounted(() => {
-    document.addEventListener("click", handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
 });
 
 onUnmounted(() => {
-    document.removeEventListener("click", handleClickOutside);
+    document.removeEventListener("mousedown", handleClickOutside);
 });
 </script>
 
@@ -85,13 +91,8 @@ onUnmounted(() => {
         <div
             v-if="selectedOption"
             class="flex items-center gap-2.5 px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 cursor-pointer"
-            @click="clearSelection"
+            @click.stop="clearSelection"
         >
-            <div
-                class="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold flex-shrink-0"
-            >
-                {{ selectedOption.label.charAt(0).toUpperCase() }}
-            </div>
             <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
                     {{ selectedOption.label }}
@@ -100,19 +101,22 @@ onUnmounted(() => {
                     {{ selectedOption.sublabel }}
                 </p>
             </div>
-            <button
-                type="button"
-                @click.stop="clearSelection"
-                class="p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded transition-colors"
+            <svg
+                class="w-4 h-4 text-gray-400 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
             >
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+            </svg>
         </div>
 
         <!-- Search input -->
-        <div v-else class="relative">
+        <div
+            v-else
+            class="relative cursor-pointer"
+            @click="handleSearchAreaClick"
+        >
             <svg
                 class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none"
                 fill="none"
@@ -153,7 +157,7 @@ onUnmounted(() => {
             leave-to-class="opacity-0 scale-95"
         >
             <div
-                v-if="isOpen && !selectedOption"
+                v-if="isOpen"
                 class="absolute z-20 mt-1 w-full max-h-52 overflow-y-auto bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg"
             >
                 <button
@@ -163,11 +167,6 @@ onUnmounted(() => {
                     @click="selectOption(option)"
                     class="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
                 >
-                    <div
-                        class="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xs font-bold flex-shrink-0"
-                    >
-                        {{ option.label.charAt(0).toUpperCase() }}
-                    </div>
                     <div class="min-w-0">
                         <p class="text-sm font-medium text-gray-900 dark:text-white truncate">
                             {{ option.label }}

@@ -408,7 +408,7 @@ class AssessmentController extends Controller
     /**
      * Generate adaptive assessment based on wrong answers and redirect to take it.
      */
-    public function generateAdaptive(Assessment $assessment, AssessmentAttempt $attempt)
+    public function generateAdaptive(Request $request, Assessment $assessment, AssessmentAttempt $attempt)
     {
         $student = auth()->user()->student;
 
@@ -445,23 +445,30 @@ class AssessmentController extends Controller
             return back()->withErrors(['error' => 'Lesson content is not available for adaptive assessment generation.']);
         }
 
-        $countByType = [
-            'multiple_choice' => 0,
-            'identification' => 0,
-            'true_or_false' => 0,
-        ];
+        // Process new adaptive limits from request
+        $request->validate([
+            'multiple_choice_count' => 'required|integer|min:0',
+            'identification_count' => 'required|integer|min:0',
+            'true_or_false_count' => 'required|integer|min:0',
+        ]);
 
-        foreach ($wrongAnswers as $answer) {
-            if (isset($countByType[$answer->type])) {
-                $countByType[$answer->type]++;
-            }
+        $mcqCount = (int) $request->multiple_choice_count;
+        $idCount = (int) $request->identification_count;
+        $tfCount = (int) $request->true_or_false_count;
+        
+        $totalRequested = $mcqCount + $idCount + $tfCount;
+        $minRequired = $wrongAnswers->count();
+        $maxAllowed = $totalQuestions;
+
+        if ($totalRequested < $minRequired) {
+            return back()->withErrors(['error' => "You must request at least {$minRequired} questions (equal to your mistakes)."]);
         }
 
-        $multipleChoiceCount = $countByType['multiple_choice'] * 2;
-        $identificationCount = $countByType['identification'] * 2;
-        $trueOrFalseCount = $countByType['true_or_false'] * 2;
+        if ($totalRequested > $maxAllowed) {
+            return back()->withErrors(['error' => "You cannot request more than {$maxAllowed} questions (original assessment total)."]);
+        }
 
-        if ($multipleChoiceCount + $identificationCount + $trueOrFalseCount === 0) {
+        if ($totalRequested === 0) {
             return back()->withErrors(['error' => 'Unable to determine question types for adaptive assessment.']);
         }
 
@@ -483,10 +490,10 @@ class AssessmentController extends Controller
         $content = $wrongAnswersText . "\n\nLESSON CONTENT (use this to generate questions that address the learning gaps above):\n\n" . $lesson->extracted_content;
 
         $config = [
-            'multiple_choice_count' => $multipleChoiceCount,
-            'identification_count' => $identificationCount,
-            'true_or_false_count' => $trueOrFalseCount,
-            'difficulty' => 'medium',
+            'multiple_choice_count' => $mcqCount,
+            'identification_count' => $idCount,
+            'true_or_false_count' => $tfCount,
+            'is_adaptive' => true,
         ];
 
         try {

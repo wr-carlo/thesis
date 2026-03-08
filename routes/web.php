@@ -51,8 +51,14 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->as('admin.')->group(funct
     Route::post('instructors/import', [InstructorController::class, 'import'])->name('instructors.import');
     Route::get('instructors/template/download', [InstructorController::class, 'downloadTemplate'])->name('instructors.template');
 
+    Route::post('departments/import', [DepartmentController::class, 'import'])->name('departments.import');
+    Route::get('departments/template/download', [DepartmentController::class, 'downloadTemplate'])->name('departments.template');
     Route::resource('departments', DepartmentController::class)->except(['show']);
+    Route::post('sections/import', [SectionController::class, 'import'])->name('sections.import');
+    Route::get('sections/template/download', [SectionController::class, 'downloadTemplate'])->name('sections.template');
     Route::resource('sections', SectionController::class)->except(['show']);
+    Route::post('subjects/import', [SubjectController::class, 'import'])->name('subjects.import');
+    Route::get('subjects/template/download', [SubjectController::class, 'downloadTemplate'])->name('subjects.template');
     Route::resource('subjects', SubjectController::class)->except(['show']);
 
     Route::get('assignments', [ProfessorSubjectController::class, 'index'])->name('assignments.index');
@@ -105,6 +111,7 @@ Route::middleware(['auth', 'instructor'])->prefix('instructor')->as('instructor.
     Route::get('subjects/{subject}/requests', [\App\Http\Controllers\Instructor\SubjectController::class, 'requests'])->name('subjects.requests');
     Route::post('subjects/{subject}/requests/{studentSubject}/approve', [\App\Http\Controllers\Instructor\SubjectController::class, 'approve'])->name('subjects.requests.approve');
     Route::post('subjects/{subject}/requests/{studentSubject}/decline', [\App\Http\Controllers\Instructor\SubjectController::class, 'decline'])->name('subjects.requests.decline');
+    Route::delete('subjects/{subject}/requests/{studentSubject}/drop', [\App\Http\Controllers\Instructor\SubjectController::class, 'drop'])->name('subjects.requests.drop');
 
     // Lessons - Manual Creation
     Route::get('lessons/create-manual', [\App\Http\Controllers\Instructor\LessonController::class, 'createManual'])->name('lessons.createManual');

@@ -46,10 +46,22 @@ class StoreLessonRequest extends FormRequest
             ],
             'bloom_levels' => 'required|array|min:1',
             'bloom_levels.*' => 'in:remember,understand,apply,analyze,evaluate,create',
-            'question_distribution' => 'required|array',
-            'question_distribution.*.mcq' => 'required|integer|min:0',
-            'question_distribution.*.identification' => 'required|integer|min:0',
-            'question_distribution.*.tf' => 'required|integer|min:0',
+            'question_distribution' => [
+                'required',
+                'array',
+                function ($attribute, $value, $fail) {
+                    $total = 0;
+                    foreach ($value as $levelCounts) {
+                        $total += ($levelCounts['mcq'] ?? 0) + ($levelCounts['identification'] ?? 0) + ($levelCounts['tf'] ?? 0);
+                    }
+                    if ($total < 1) {
+                        $fail('Please configure at least one question across all selected Bloom\'s levels.');
+                    }
+                },
+            ],
+            'question_distribution.*.mcq' => 'nullable|integer|min:0',
+            'question_distribution.*.identification' => 'nullable|integer|min:0',
+            'question_distribution.*.tf' => 'nullable|integer|min:0',
         ];
     }
 

@@ -6,7 +6,7 @@
                     error
                         ? "Processing Failed"
                         : processing
-                        ? "Processing Lesson"
+                        ? (type === 'adaptive' ? "Generating Assessment" : "Processing Lesson")
                         : "Complete"
                 }}
             </h2>
@@ -18,7 +18,7 @@
                     <div class="w-48 h-48 flex items-center justify-center">
                         <iframe
                             v-if="processing"
-                            src="https://lottie.host/embed/8f34be24-f75a-42c9-968e-9bb15a9559bc/Z7FOgMJKo9.lottie"
+                            :src="type === 'adaptive' ? 'https://lottie.host/embed/15e622ed-4892-4591-983e-c832bbb09e76/oD908eaZLZ.lottie' : 'https://lottie.host/embed/8f34be24-f75a-42c9-968e-9bb15a9559bc/Z7FOgMJKo9.lottie'"
                             class="w-full h-full border-0"
                             style="border: none; background: transparent;"
                         ></iframe>
@@ -82,8 +82,7 @@
                     class="mt-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md"
                 >
                     <p class="text-sm text-blue-600 dark:text-blue-400">
-                        Please wait while we process your lesson. This may take
-                        a few moments.
+                        {{ type === 'adaptive' ? "Please wait while we generate your custom adaptive questions. This may take a few moments." : "Please wait while we process your lesson. This may take a few moments." }}
                     </p>
                 </div>
             </div>
@@ -137,6 +136,10 @@ const props = defineProps({
         type: String,
         default: "",
     },
+    type: {
+        type: String,
+        default: "lesson", // "lesson" or "adaptive"
+    }
 });
 
 const emit = defineEmits(["close", "cancel", "retry"]);

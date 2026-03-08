@@ -128,9 +128,11 @@ class AIServiceManager
                     'tf_count' => count($result['true_or_false'] ?? []),
                 ]);
 
-                // Run Bloom's validation if bloom_levels are specified
+                // Run Bloom's validation if bloom_levels are specified and it's NOT an adaptive generation
                 $bloomLevels = $config['bloom_levels'] ?? null;
-                if ($bloomLevels) {
+                $isAdaptive = $config['is_adaptive'] ?? false;
+                
+                if ($bloomLevels && !$isAdaptive) {
                     $result = $this->bloomsValidator->validate($result, $bloomLevels);
 
                     Log::info('AIServiceManager: Result after Bloom\'s validation', [
@@ -153,9 +155,11 @@ class AIServiceManager
                     $result = $provider->generateAssessment($content, $config);
                     $usedProvider = $providerName;
 
-                    // Run Bloom's validation on retry result too
+                    // Run Bloom's validation on retry result too (if not adaptive)
                     $bloomLevels = $config['bloom_levels'] ?? null;
-                    if ($bloomLevels) {
+                    $isAdaptive = $config['is_adaptive'] ?? false;
+                    
+                    if ($bloomLevels && !$isAdaptive) {
                         $result = $this->bloomsValidator->validate($result, $bloomLevels);
                     }
 
@@ -217,9 +221,11 @@ class AIServiceManager
 
                 $combinedResult = $this->combineChunkResults($allResults);
 
-                // Run Bloom's validation on combined results
+                // Run Bloom's validation on combined results (if not adaptive)
                 $bloomLevels = $config['bloom_levels'] ?? null;
-                if ($bloomLevels) {
+                $isAdaptive = $config['is_adaptive'] ?? false;
+                
+                if ($bloomLevels && !$isAdaptive) {
                     $combinedResult = $this->bloomsValidator->validate($combinedResult, $bloomLevels);
                 }
 

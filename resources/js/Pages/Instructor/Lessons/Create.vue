@@ -61,15 +61,21 @@
                             <div>
                                 <InputLabel for="file" value="Lesson File" />
                                 <div
-                                    class="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 dark:border-gray-600 border-dashed rounded-md hover:border-indigo-500 transition"
+                                    class="mt-1 relative overflow-hidden rounded-lg p-[2px]"
                                     @dragover.prevent="isDragging = true"
                                     @dragleave.prevent="isDragging = false"
                                     @drop.prevent="handleDrop"
-                                    :class="{
-                                        'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/20':
-                                            isDragging,
-                                    }"
                                 >
+                                    <div
+                                        class="drop-zone-beam"
+                                        :class="{ 'drop-zone-beam--full': form.file }"
+                                    />
+                                    <div
+                                        class="relative flex justify-center px-6 pt-5 pb-6 rounded-[calc(0.5rem-2px)] transition-colors"
+                                        :class="isDragging
+                                            ? 'bg-indigo-50 dark:bg-indigo-900/20'
+                                            : 'bg-white dark:bg-gray-800'"
+                                    >
                                     <div class="space-y-1 text-center">
                                         <svg
                                             class="mx-auto h-12 w-12 text-gray-400"
@@ -98,7 +104,6 @@
                                                     class="sr-only"
                                                     accept=".docx,.pdf,.pptx,.txt"
                                                     @change="handleFileSelect"
-                                                    required
                                                 />
                                             </label>
                                             <p class="pl-1">or drag and drop</p>
@@ -115,10 +120,11 @@
                                             Selected: {{ fileName }}
                                         </p>
                                     </div>
+                                    </div>
                                 </div>
                                 <InputError
                                     class="mt-2"
-                                    :message="form.errors.file"
+                                    :message="fileError || form.errors.file"
                                 />
                             </div>
 
@@ -312,8 +318,9 @@
 
 <script setup>
 import { ref, watch, onUnmounted } from "vue";
-import { useForm } from "@inertiajs/vue3";
+import { useForm, usePage } from "@inertiajs/vue3";
 import InstructorLayout from "@/Layouts/InstructorLayout.vue";
+import { useToast } from "@/Stores/useToast";
 import InputLabel from "@/Components/InputLabel.vue";
 import TextInput from "@/Components/TextInput.vue";
 import InputError from "@/Components/InputError.vue";
@@ -323,6 +330,8 @@ import { Head } from "@inertiajs/vue3";
 const props = defineProps({
     subjects: Array,
 });
+
+const { success: showToast } = useToast();
 
 // Bloom's Taxonomy levels configuration
 const bloomLevels = [
@@ -405,6 +414,7 @@ const form = useForm({
 });
 
 const fileName = ref("");
+const fileError = ref("");
 const isDragging = ref(false);
 const showProcessingModal = ref(false);
 const showConfirmModal = ref(false);
@@ -441,19 +451,30 @@ const handleFileSelect = (event) => {
     if (file) {
         form.file = file;
         fileName.value = file.name;
+        fileError.value = "";
     }
 };
 
 const handleDrop = (event) => {
     isDragging.value = false;
-    const file = event.dataTransfer.files[0];
+    event.preventDefault();
+    const file = event.dataTransfer?.files?.[0];
     if (file) {
         form.file = file;
         fileName.value = file.name;
+        fileError.value = "";
     }
 };
 
 const submitForm = () => {
+    fileError.value = "";
+
+    // Validate file (supports both click-to-upload and drag-and-drop)
+    if (!form.file) {
+        fileError.value = "Please upload a lesson file.";
+        return;
+    }
+
     // Only send the levels that are actually selected based on the toggle.
     form.bloom_levels = hotsEnabled.value 
         ? ["analyze", "evaluate", "create"] 
@@ -504,11 +525,13 @@ const confirmGenerate = () => {
         onSuccess: () => {
             playSound('success');
             showProcessingModal.value = false;
+            const msg = usePage().props.flash?.success || "Assessment generated successfully! Please review before saving.";
+            showToast(msg);
         },
         onError: (errors) => {
             playSound('failed');
             uploadError.value =
-                errors.error || "An error occurred during upload";
+                getUploadErrorMessage(errors) || "An error occurred during upload";
             uploadProgress.value = 0;
         },
         onProgress: (progress) => {
@@ -520,6 +543,23 @@ const confirmGenerate = () => {
 const handleHotsToggle = () => {
     // We already use the state of hotsEnabled to drive the view visually.
     // The active levels are filtered during submission.
+};
+
+/**
+ * Extract the proper error message from API/validation errors.
+ * Handles: controller withErrors(['error' => ...]), validation (errors.file, etc.), and nested structures.
+ */
+const getUploadErrorMessage = (errors) => {
+    if (!errors || typeof errors !== "object") return null;
+    // Prefer our custom 'error' key (from controller withErrors)
+    if (errors.error && typeof errors.error === "string") return errors.error;
+    // Collect all string messages from validation errors (file, subject_id, title, etc.)
+    const values = Object.values(errors);
+    for (const v of values) {
+        if (typeof v === "string") return v;
+        if (Array.isArray(v) && v.length > 0 && typeof v[0] === "string") return v[0];
+    }
+    return null;
 };
 
 const handleClose = () => {
@@ -536,6 +576,7 @@ const cancelUpload = () => {
     showProcessingModal.value = false;
     form.reset();
     fileName.value = "";
+    fileError.value = "";
     uploadError.value = "";
     uploadProgress.value = 0;
     currentStage.value = "";
@@ -543,8 +584,73 @@ const cancelUpload = () => {
 
 const retryUpload = () => {
     uploadError.value = "";
-    uploadProgress.value = 0;
-    currentStage.value = "";
-    submitForm();
+    uploadProgress.value = 10;
+    currentStage.value = "Uploading file...";
+
+    // Retry the actual upload (same as confirmGenerate), not the confirmation flow
+    form.transform((data) => ({
+        ...data,
+        question_distribution: summarizedDistribution.value
+    })).post(route("instructor.lessons.store"), {
+        onSuccess: () => {
+            playSound('success');
+            showProcessingModal.value = false;
+            const msg = usePage().props.flash?.success || "Assessment generated successfully! Please review before saving.";
+            showToast(msg);
+        },
+        onError: (errors) => {
+            playSound('failed');
+            uploadError.value =
+                getUploadErrorMessage(errors) || "An error occurred during upload";
+            uploadProgress.value = 0;
+        },
+        onProgress: (progress) => {
+            uploadProgress.value = Math.min(90, progress.percentage || 0);
+        },
+    });
 };
 </script>
+
+<style scoped>
+.drop-zone-beam {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 200vmax;
+    height: 200vmax;
+    margin-left: -100vmax;
+    margin-top: -100vmax;
+    background: conic-gradient(
+        from 0deg,
+        transparent 0deg,
+        #3238a8 20deg,
+        #00c8ff 40deg,
+        transparent 60deg,
+        transparent 60deg 150deg,
+        transparent 150deg,
+        #3238a8 170deg,
+        #00c8ff 190deg,
+        transparent 210deg,
+        transparent 210deg 360deg
+    );
+    animation: border-beam-rotate 3s linear infinite;
+    will-change: transform;
+    border-radius: 50%;
+}
+
+.drop-zone-beam--full {
+    background: conic-gradient(
+        from 0deg,
+        #3238a8,
+        #00c8ff,
+        #3238a8,
+        #00c8ff,
+        #3238a8
+    );
+}
+
+@keyframes border-beam-rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+</style>

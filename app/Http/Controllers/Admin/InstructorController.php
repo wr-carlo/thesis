@@ -22,6 +22,7 @@ class InstructorController extends Controller
     public function index(Request $request)
     {
         $search = $request->string('search')->toString();
+        $perPage = min(max((int) $request->input('per_page', 10), 1), 100);
 
         $instructors = User::with(['professor.department'])
             ->where('role', 'instructor')
@@ -32,7 +33,7 @@ class InstructorController extends Controller
                 });
             })
             ->orderBy('name')
-            ->paginate(8)
+            ->paginate($perPage)
             ->withQueryString();
 
         return Inertia::render('Admin/Instructors/Index', [
@@ -40,6 +41,7 @@ class InstructorController extends Controller
             'departments' => Department::orderBy('name')->get(),
             'filters' => [
                 'search' => $search,
+                'per_page' => $perPage,
             ],
         ]);
     }
@@ -139,18 +141,19 @@ class InstructorController extends Controller
 
     public function import(InstructorImportRequest $request)
     {
+        set_time_limit(0);
+        ini_set('memory_limit', '256M');
+
         $file = $request->file('file');
         $departmentId = $request->input('department_id');
-        
         $imported = 0;
         $errors = [];
         $skipped = 0;
         $rowNumber = 1;
 
         try {
-            // First, validate the headers
             $allRows = (new FastExcel)->import($file);
-            
+
             if ($allRows->isEmpty()) {
                 return back()->with('flash', [
                     'type' => 'error',
@@ -158,11 +161,8 @@ class InstructorController extends Controller
                 ]);
             }
 
-            // Get the first row to check headers
             $firstRow = $allRows->first();
             $headers = array_keys($firstRow);
-
-            // Validate required headers exist
             $hasIdNumber = false;
             $hasName = false;
             $idNumberKey = null;
@@ -174,22 +174,20 @@ class InstructorController extends Controller
                     $hasIdNumber = true;
                     $idNumberKey = $header;
                 }
-               
                 if ($normalizedHeader === 'name') {
                     $hasName = true;
                     $nameKey = $header;
                 }
             }
 
-            if (!$hasIdNumber || !$hasName) {
-                $foundHeaders = implode(', ', array_map(function($h) { return '"' . $h . '"'; }, $headers));
+            if (! $hasIdNumber || ! $hasName) {
+                $foundHeaders = implode(', ', array_map(fn ($h) => '"' . $h . '"', $headers));
                 return back()->with('flash', [
                     'type' => 'error',
                     'message' => "Invalid Excel format. Required columns: 'id_number' and 'name'. Found columns: {$foundHeaders}. Please download the template and follow the correct format.",
                 ]);
             }
 
-            // Validate header order
             if ($headers[0] !== $idNumberKey) {
                 return back()->with('flash', [
                     'type' => 'error',
@@ -204,58 +202,83 @@ class InstructorController extends Controller
                 ]);
             }
 
+            // Hash password once (reused for all rows)
+            $hashedPassword = Hash::make('chcc@2025');
+
+            // Pre-load existing id_numbers (1 query instead of N)
+            $existingIdNumbers = User::pluck('id_number')->flip()->toArray();
+
             DB::beginTransaction();
 
-            // Process each row
+            $chunkSize = 50;
+            $userBatch = [];
+            $now = now();
+
             foreach ($allRows as $line) {
                 $rowNumber++;
+                $idNumber = isset($line[$idNumberKey]) ? trim((string) $line[$idNumberKey]) : null;
+                $name = isset($line[$nameKey]) ? trim((string) $line[$nameKey]) : null;
 
-                // Get values using the detected keys
-                $idNumber = isset($line[$idNumberKey]) ? $line[$idNumberKey] : null;
-                $name = isset($line[$nameKey]) ? $line[$nameKey] : null;
-
-                // Skip completely empty rows
                 if (empty($idNumber) && empty($name)) {
                     continue;
                 }
 
-                // Validate ID Number
-                if (empty($idNumber) || trim($idNumber) === '') {
+                if (empty($idNumber)) {
                     $errors[] = "Row {$rowNumber}: ID number is required";
                     $skipped++;
                     continue;
                 }
 
-                // Validate Name
-                if (empty($name) || trim($name) === '') {
+                if (empty($name)) {
                     $errors[] = "Row {$rowNumber}: Name is required (ID: {$idNumber})";
                     $skipped++;
                     continue;
                 }
 
-                // Check if user already exists
-                $existingUser = User::where('id_number', $idNumber)->first();
-                if ($existingUser) {
+                if (isset($existingIdNumbers[$idNumber])) {
                     $errors[] = "Row {$rowNumber}: ID number '{$idNumber}' already exists";
                     $skipped++;
                     continue;
                 }
+                $existingIdNumbers[$idNumber] = true;
 
-                // Create user
-                $user = User::create([
-                    'id_number' => trim($idNumber),
-                    'name' => trim($name),
+                $userBatch[] = [
+                    'id_number' => $idNumber,
+                    'name' => $name,
                     'role' => 'instructor',
-                    'password' => Hash::make('chcc@2025'),
-                ]);
+                    'password' => $hashedPassword,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
 
-                // Create professor record
-                Professor::create([
-                    'user_id' => $user->id,
+                if (count($userBatch) >= $chunkSize) {
+                    User::insert($userBatch);
+                    $firstId = DB::connection()->getPdo()->lastInsertId();
+                    $userIds = range((int) $firstId, (int) $firstId + count($userBatch) - 1);
+                    $professorBatch = array_map(fn ($uid) => [
+                        'user_id' => $uid,
+                        'department_id' => $departmentId,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ], $userIds);
+                    Professor::insert($professorBatch);
+                    $imported += count($userBatch);
+                    $userBatch = [];
+                }
+            }
+
+            if (! empty($userBatch)) {
+                User::insert($userBatch);
+                $firstId = DB::connection()->getPdo()->lastInsertId();
+                $userIds = range((int) $firstId, (int) $firstId + count($userBatch) - 1);
+                $professorBatch = array_map(fn ($uid) => [
+                    'user_id' => $uid,
                     'department_id' => $departmentId,
-                ]);
-
-                $imported++;
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ], $userIds);
+                Professor::insert($professorBatch);
+                $imported += count($userBatch);
             }
 
             DB::commit();

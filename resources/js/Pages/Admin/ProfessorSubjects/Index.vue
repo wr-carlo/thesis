@@ -20,15 +20,39 @@ const { success, error } = useToast();
 
 // Search
 const searchQuery = ref("");
+
+// Subject filter (dropdown to filter by specific subject)
+const subjectFilterId = ref("");
+
+const subjectFilterOptions = computed(() => [
+    { value: "", label: "All subjects" },
+    ...props.subjects.map((s) => ({
+        value: String(s.id),
+        label: `${s.code} — ${s.name}`,
+    })),
+]);
+
 const filteredSubjects = computed(() => {
-    if (!searchQuery.value) return props.subjects;
-    const q = searchQuery.value.toLowerCase();
-    return props.subjects.filter(
-        (s) =>
-            s.name.toLowerCase().includes(q) ||
-            s.code.toLowerCase().includes(q) ||
-            s.assignments.some((a) => a.professor_name.toLowerCase().includes(q))
-    );
+    let list = props.subjects;
+
+    // Filter by selected subject (null/empty = all)
+    const subjectId = subjectFilterId.value;
+    if (subjectId != null && subjectId !== "") {
+        list = list.filter((s) => String(s.id) === subjectId);
+    }
+
+    // Filter by search query
+    if (searchQuery.value) {
+        const q = searchQuery.value.toLowerCase();
+        list = list.filter(
+            (s) =>
+                s.name.toLowerCase().includes(q) ||
+                s.code.toLowerCase().includes(q) ||
+                s.assignments.some((a) => a.professor_name.toLowerCase().includes(q))
+        );
+    }
+
+    return list;
 });
 
 // Assign modal
@@ -134,27 +158,42 @@ const formatDate = (dateString) => {
             </p>
         </div>
 
-        <!-- Search -->
-        <div class="mb-6">
-            <div class="relative max-w-md">
-                <svg
-                    class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                >
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        stroke-width="2"
-                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+        <!-- Filters -->
+        <div class="mb-6 flex flex-col sm:flex-row gap-4">
+            <div class="flex-1 min-w-0">
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                    Search
+                </label>
+                <div class="relative">
+                    <svg
+                        class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                    >
+                        <path
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                        />
+                    </svg>
+                    <input
+                        v-model="searchQuery"
+                        type="text"
+                        placeholder="Search subjects or instructors..."
+                        class="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all"
                     />
-                </svg>
-                <input
-                    v-model="searchQuery"
-                    type="text"
-                    placeholder="Search subjects or instructors..."
-                    class="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all"
+                </div>
+            </div>
+            <div class="sm:w-64">
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                    Filter by subject
+                </label>
+                <SearchableSelect
+                    v-model="subjectFilterId"
+                    :options="subjectFilterOptions"
+                    placeholder="Filter by subject..."
                 />
             </div>
         </div>
@@ -281,7 +320,7 @@ const formatDate = (dateString) => {
                 No subjects found
             </h3>
             <p class="text-sm text-gray-500 dark:text-gray-400">
-                Try adjusting your search query.
+                {{ subjectFilterId || searchQuery ? "Try adjusting your filters or search query." : "No subjects in database yet." }}
             </p>
         </div>
 

@@ -33,6 +33,10 @@ class GeminiProvider implements AIServiceInterface
 
     protected function buildPrompt(string $content, string $previousContext, array $options): string
     {
+        if (isset($options['is_adaptive']) && $options['is_adaptive']) {
+            return $this->buildAdaptivePrompt($content, $previousContext, $options);
+        }
+
         $distribution = $options['question_distribution'] ?? [];
         $bloomLevels = $options['bloom_levels'] ?? ['remember', 'understand'];
 
@@ -62,6 +66,45 @@ class GeminiProvider implements AIServiceInterface
 
         // Add Bloom's Taxonomy instructions with specific distribution mapping
         $prompt .= BloomsTaxonomyConfig::getPromptInstructions($distribution);
+
+        $prompt .= "Return ONLY a valid JSON response with this exact structure:\n";
+        $prompt .= BloomsTaxonomyConfig::getJsonStructure();
+
+        return $prompt;
+    }
+
+    protected function buildAdaptivePrompt(string $content, string $previousContext, array $options): string
+    {
+        $totalMcq = $options['multiple_choice_count'] ?? 0;
+        $totalId = $options['identification_count'] ?? 0;
+        $totalTf = $options['true_or_false_count'] ?? 0;
+
+        $prompt = "You are an expert, empathetic educational assessment generator. "
+            . "Generate an adaptive practice assessment to help a student overcome specific learning gaps. "
+            . "You have been provided with the student's previous mistakes and the corresponding lesson content. "
+            . "Analyze the mistakes, determine the core misunderstandings, and generate questions that will test those concepts "
+            . "and gently build their understanding, without being overly punitive. "
+            . "Assign the most appropriate Bloom's Taxonomy cognitive level to each question based on what the student needs.\n\n";
+
+        $prompt .= "Generate an adaptive assessment based on the following student performance and lesson content:\n\n";
+
+        if (!empty($previousContext)) {
+            $prompt .= "IMPORTANT: The following sections have already been generated in a previous chunk. Avoid duplicating topics:\n\n";
+            $prompt .= $previousContext . "\n\n";
+            $prompt .= "Current section to generate questions from:\n\n";
+        }
+
+        $prompt .= $content . "\n\n";
+        $prompt .= "Question Requirements (Total to generate):\n";
+        $prompt .= "- Multiple Choice: {$totalMcq} questions\n";
+        $prompt .= "- Identification: {$totalId} questions\n";
+        $prompt .= "- True/False: {$totalTf} questions\n\n";
+
+        $prompt .= "Instructions:\n";
+        $prompt .= "1. Read the STUDENT'S WRONG ANSWERS carefully to identify their knowledge gaps.\n";
+        $prompt .= "2. Cross-reference these gaps with the LESSON CONTENT.\n";
+        $prompt .= "3. Create NEW questions that target these specific gaps. Do not just repeat the old questions.\n";
+        $prompt .= "4. For each question, decide the best 'bloom_level' (remember, understand, apply, analyze, evaluate, create) that fits the concept.\n\n";
 
         $prompt .= "Return ONLY a valid JSON response with this exact structure:\n";
         $prompt .= BloomsTaxonomyConfig::getJsonStructure();

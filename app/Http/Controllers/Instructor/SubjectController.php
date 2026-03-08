@@ -101,11 +101,28 @@ class SubjectController extends Controller
                 'requested_at' => $request->created_at,//->format('M d, Y h:i A'),
                 'created_at' => $request->created_at,
             ];
-            })->values();
+        })->values();
+
+        // Get approved students for this subject
+        $approvedStudents = StudentSubject::where('subject_id', $subject->id)
+            ->where('status', 'approved')
+            ->with(['student.user', 'student.section'])
+            ->orderBy('updated_at', 'desc')
+            ->get()
+            ->map(function ($record) {
+                return [
+                    'id' => $record->id,
+                    'student_name' => $record->student->user->name,
+                    'student_id_number' => $record->student->user->id_number,
+                    'section_name' => $record->student->section->name,
+                    'approved_at' => $record->updated_at,
+                ];
+            });
 
         return Inertia::render('Instructor/Subjects/Requests', [
             'subject' => $subject,
             'requests' => $requests,
+            'approvedStudents' => $approvedStudents,
         ]);
     }
 
@@ -198,6 +215,55 @@ class SubjectController extends Controller
         return back()->with('flash', [
             'type' => 'success',
             'message' => 'Join request declined.',
+        ]);
+    }
+
+    /**
+     * Drop a joined student.
+     */
+    public function drop(Subject $subject, StudentSubject $studentSubject)
+    {
+        // Verify instructor is assigned to this subject
+        $professor = auth()->user()->professor;
+        
+        $subject->load('professors');
+        if (!$subject->professors->contains($professor->id)) {
+            abort(403, 'Unauthorized access to this subject');
+        }
+
+        // Verify the request belongs to this subject
+        if ($studentSubject->subject_id !== $subject->id) {
+            abort(404, 'Student not found in this subject');
+        }
+
+        // Eager load student and user relationships
+        $studentSubject->load(['student.user']);
+
+        // Update status and delete so they can rejoin later if needed or stay tracked. Let's delete the record.
+        // Or set status to dropped. Deleting allows them to request again. Let's just delete the record entirely.
+        $studentName = $studentSubject->student->user->name;
+        $studentId = $studentSubject->student->user_id;
+
+        $studentSubject->delete();
+
+        // Create notification for student
+        $notification = Notification::create([
+            'user_id' => $studentId,
+            'description' => "You have been dropped from {$subject->name}.",
+        ]);
+        
+        // Broadcast the notification
+        event(new NotificationCreated($notification));
+
+        // Log the action
+        $this->logAction(
+            auth()->user(),
+            "Dropped student {$studentName} from {$subject->name}"
+        );
+
+        return back()->with('flash', [
+            'type' => 'success',
+            'message' => 'Student dropped successfully.',
         ]);
     }
 

@@ -7,9 +7,10 @@ import SecondaryButton from "@/Components/SecondaryButton.vue";
 import TextInput from "@/Components/TextInput.vue";
 import Modal from "@/Components/Modal.vue";
 import { Head, Link, router, useForm } from "@inertiajs/vue3";
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { useToast } from "@/Stores/useToast";
 import ConfirmationModal from "@/Components/ConfirmationModal.vue";
+import Pagination from "@/Components/Pagination.vue";
 
 const props = defineProps({
     subjects: Object,
@@ -22,12 +23,34 @@ const form = useForm({
     description: "",
 });
 
-const { success, error } = useToast();
+const { success, error, warning } = useToast();
 const updateForms = {};
 const editingId = ref(null);
 const showCreateModal = ref(false);
+const showImportModal = ref(false);
 const showDeleteModal = ref(false);
 const subjectToDelete = ref(null);
+const importErrors = ref([]);
+const importErrorMessage = ref("");
+const isImportDragging = ref(false);
+const importFileName = ref("");
+
+const importForm = useForm({
+    file: null,
+});
+
+const searchQuery = ref(props.filters?.search || "");
+let searchTimeout = null;
+
+watch(searchQuery, (newValue) => {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        router.get(route("admin.subjects.index"), { search: newValue, per_page: props.filters?.per_page || 10 }, {
+            preserveState: true,
+            preserveScroll: true,
+        });
+    }, 300);
+});
 
 const hasSubjects = computed(() => props.subjects.data?.length > 0);
 
@@ -39,6 +62,79 @@ const closeCreateModal = () => {
     showCreateModal.value = false;
     form.reset();
     form.clearErrors();
+};
+
+const openImportModal = () => {
+    showImportModal.value = true;
+    importErrors.value = [];
+};
+
+const closeImportModal = () => {
+    showImportModal.value = false;
+    importForm.reset();
+    importForm.clearErrors();
+    importErrors.value = [];
+    importErrorMessage.value = "";
+    importFileName.value = "";
+};
+
+const handleImportFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        importForm.file = file;
+        importFileName.value = file.name;
+    }
+};
+
+const handleImportDrop = (event) => {
+    isImportDragging.value = false;
+    event.preventDefault();
+    const file = event.dataTransfer?.files?.[0];
+    if (file && /\.(xlsx|xls|csv)$/i.test(file.name)) {
+        importForm.file = file;
+        importFileName.value = file.name;
+    }
+};
+
+const downloadTemplate = () => {
+    window.location.href = route("admin.subjects.template");
+};
+
+const getImportErrorMessage = (errors) => {
+    if (!errors) return null;
+    const first = (field) => {
+        const v = errors[field];
+        return Array.isArray(v) ? v[0] : typeof v === "string" ? v : null;
+    };
+    return first("file") || first("error") || "Failed to import. Please check your file format.";
+};
+
+const submitImport = () => {
+    importErrorMessage.value = "";
+    importForm.post(route("admin.subjects.import"), {
+        preserveScroll: true,
+        onSuccess: (response) => {
+            const flash = response.props.flash;
+            if (flash?.type === "error") {
+                importErrorMessage.value = flash.message || "Import failed. Please try again.";
+                if (flash.errors) importErrors.value = flash.errors;
+                error(flash.message);
+                return;
+            }
+            if (flash?.errors?.length > 0) {
+                importErrors.value = flash.errors;
+            }
+            closeImportModal();
+            if (flash?.type === "success") success(flash.message);
+            else if (flash?.type === "warning") warning(flash.message);
+            else success("Subjects imported successfully");
+        },
+        onError: (errors) => {
+            const msg = getImportErrorMessage(errors);
+            importErrorMessage.value = msg;
+            error(msg);
+        },
+    });
 };
 
 const submitCreate = () => {
@@ -146,25 +242,72 @@ const truncateText = (text, maxLength = 80) => {
                         Manage academic subjects
                     </p>
                 </div>
-                <button
-                    @click="openCreateModal"
-                    class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200"
-                >
-                    <svg
-                        class="w-5 h-5"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
+                <div class="flex items-center gap-2">
+                    <button
+                        @click="openImportModal"
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 text-sm font-medium rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200"
                     >
-                        <path
-                            stroke-linecap="round"
-                            stroke-linejoin="round"
-                            stroke-width="2"
-                            d="M12 4v16m8-8H4"
-                        />
-                    </svg>
-                    Add Subject
-                </button>
+                        <svg
+                            class="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                            />
+                        </svg>
+                        Import
+                    </button>
+                    <button
+                        @click="openCreateModal"
+                        class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200"
+                    >
+                        <svg
+                            class="w-5 h-5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 4v16m8-8H4"
+                            />
+                        </svg>
+                        Add Subject
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Bar -->
+        <div class="mb-6">
+            <div class="relative max-w-md">
+                <svg
+                    class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                >
+                    <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        stroke-width="2"
+                        d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                    />
+                </svg>
+                <input
+                    id="search"
+                    v-model="searchQuery"
+                    type="text"
+                    placeholder="Search by subject code or name..."
+                    class="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all"
+                />
             </div>
         </div>
 
@@ -190,12 +333,13 @@ const truncateText = (text, maxLength = 80) => {
                 <h3
                     class="text-sm font-medium text-gray-900 dark:text-white mb-1"
                 >
-                    No subjects
+                    {{ searchQuery ? "No subjects found" : "No subjects" }}
                 </h3>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    Get started by creating a new subject.
+                    {{ searchQuery ? "Try adjusting your search." : "Get started by creating a new subject." }}
                 </p>
                 <button
+                    v-if="!searchQuery"
                     @click="openCreateModal"
                     class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200"
                 >
@@ -472,78 +616,17 @@ const truncateText = (text, maxLength = 80) => {
             </div>
 
             <!-- Pagination -->
-            <div
-                v-if="props.subjects.links && props.subjects.links.length > 3"
-                class="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between"
-            >
-                <div class="flex-1 flex justify-between sm:hidden">
-                    <Link
-                        v-if="props.subjects.links[0].url"
-                        :href="props.subjects.links[0].url"
-                        class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        preserve-scroll
-                    >
-                        Previous
-                    </Link>
-                    <Link
-                        v-if="
-                            props.subjects.links[
-                                props.subjects.links.length - 1
-                            ].url
-                        "
-                        :href="
-                            props.subjects.links[
-                                props.subjects.links.length - 1
-                            ].url
-                        "
-                        class="ml-3 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        preserve-scroll
-                    >
-                        Next
-                    </Link>
-                </div>
-                <div
-                    class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between"
-                >
-                    <div>
-                        <p class="text-sm text-gray-700 dark:text-gray-300">
-                            Showing
-                            <span class="font-medium">{{
-                                props.subjects.from || 0
-                            }}</span>
-                            to
-                            <span class="font-medium">{{
-                                props.subjects.to || 0
-                            }}</span>
-                            of
-                            <span class="font-medium">{{
-                                props.subjects.total || 0
-                            }}</span>
-                            results
-                        </p>
-                    </div>
-                    <div class="flex gap-1">
-                        <Link
-                            v-for="(link, index) in props.subjects.links"
-                            :key="index"
-                            :href="link.url || '#'"
-                            v-html="link.label"
-                            :class="[
-                                'px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-150',
-                                link.active
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700',
-                                !link.url ||
-                                link.url === '#' ||
-                                link.url === null
-                                    ? 'opacity-50 cursor-not-allowed pointer-events-none'
-                                    : 'cursor-pointer',
-                            ]"
-                            preserve-scroll
-                        />
-                    </div>
-                </div>
-            </div>
+            <Pagination
+                :links="props.subjects.links || []"
+                :current-page="props.subjects.current_page || 1"
+                :last-page="props.subjects.last_page || 1"
+                :per-page="props.filters?.per_page || 10"
+                :total="props.subjects.total || 0"
+                :from="props.subjects.from || 0"
+                :to="props.subjects.to || 0"
+                route-name="admin.subjects.index"
+                :filters="{ search: props.filters?.search || '' }"
+            />
         </div>
 
         <!-- Create Subject Modal -->
@@ -647,6 +730,210 @@ const truncateText = (text, maxLength = 80) => {
             </div>
         </Modal>
 
+        <!-- Import Subjects Modal -->
+        <Modal :show="showImportModal" @close="closeImportModal">
+            <div class="p-6">
+                <div class="flex items-center justify-between mb-6">
+                    <h2
+                        class="text-xl font-semibold text-gray-900 dark:text-white"
+                    >
+                        Import Subjects
+                    </h2>
+                    <button
+                        @click="closeImportModal"
+                        class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors"
+                    >
+                        <svg
+                            class="w-6 h-6"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12"
+                            />
+                        </svg>
+                    </button>
+                </div>
+                <form @submit.prevent="submitImport" class="space-y-6">
+                    <!-- Error message banner -->
+                    <div
+                        v-if="importErrorMessage"
+                        class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3"
+                    >
+                        <svg
+                            class="w-5 h-5 text-red-500 dark:text-red-400 shrink-0 mt-0.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                stroke-width="2"
+                                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                        </svg>
+                        <div class="flex-1 min-w-0">
+                            <p
+                                class="text-sm font-medium text-red-800 dark:text-red-200"
+                            >
+                                {{ importErrorMessage }}
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            @click="importErrorMessage = ''"
+                            class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 shrink-0"
+                            aria-label="Dismiss"
+                        >
+                            <svg
+                                class="w-5 h-5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    stroke-width="2"
+                                    d="M6 18L18 6M6 6l12 12"
+                                />
+                            </svg>
+                        </button>
+                    </div>
+                    <div>
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                            Upload an Excel or CSV file with <strong>subject_code</strong> and <strong>subject_name</strong> columns. Duplicate codes will be skipped.
+                        </p>
+                        <InputLabel
+                            for="import_file"
+                            value="Select File"
+                            class="mb-2"
+                        />
+                        <div
+                            class="mt-1 relative overflow-hidden rounded-lg p-[2px]"
+                            @dragover.prevent="isImportDragging = true"
+                            @dragleave.prevent="isImportDragging = false"
+                            @drop.prevent="handleImportDrop"
+                        >
+                            <div
+                                class="drop-zone-beam"
+                                :class="{ 'drop-zone-beam--full': importForm.file }"
+                            />
+                            <div
+                                class="relative flex justify-center px-6 pt-5 pb-6 rounded-[calc(0.5rem-2px)] transition-colors"
+                                :class="isImportDragging
+                                    ? 'bg-indigo-50 dark:bg-indigo-900/20'
+                                    : 'bg-white dark:bg-gray-800'"
+                            >
+                            <div class="space-y-1 text-center">
+                                <svg
+                                    class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500"
+                                    stroke="currentColor"
+                                    fill="none"
+                                    viewBox="0 0 48 48"
+                                >
+                                    <path
+                                        d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                                        stroke-width="2"
+                                        stroke-linecap="round"
+                                        stroke-linejoin="round"
+                                    />
+                                </svg>
+                                <div
+                                    class="flex text-sm text-gray-600 dark:text-gray-400 justify-center"
+                                >
+                                    <label
+                                        for="import_file"
+                                        class="relative cursor-pointer rounded-md font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
+                                    >
+                                        <span>Upload a file</span>
+                                        <input
+                                            id="import_file"
+                                            type="file"
+                                            class="sr-only"
+                                            accept=".xlsx,.xls,.csv"
+                                            @change="handleImportFileChange"
+                                        />
+                                    </label>
+                                    <p class="pl-1">or drag and drop</p>
+                                </div>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">
+                                    XLSX, XLS, CSV up to 2MB
+                                </p>
+                                <p
+                                    v-if="importFileName"
+                                    class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-2"
+                                >
+                                    Selected: {{ importFileName }}
+                                </p>
+                            </div>
+                            </div>
+                        </div>
+                        <InputError
+                            class="mt-2"
+                            :message="importForm.errors.file"
+                        />
+                        <button
+                            type="button"
+                            @click="downloadTemplate"
+                            class="mt-2 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium"
+                        >
+                            Download template
+                        </button>
+                    </div>
+                    <div
+                        v-if="importErrors.length > 0"
+                        class="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg max-h-32 overflow-y-auto"
+                    >
+                        <p
+                            class="text-xs font-medium text-amber-800 dark:text-amber-300 mb-2"
+                        >
+                            Skipped rows:
+                        </p>
+                        <ul
+                            class="text-xs text-amber-700 dark:text-amber-400 space-y-1"
+                        >
+                            <li
+                                v-for="(err, idx) in importErrors.slice(0, 10)"
+                                :key="idx"
+                            >
+                                {{ err }}
+                            </li>
+                            <li
+                                v-if="importErrors.length > 10"
+                                class="text-amber-600 dark:text-amber-500"
+                            >
+                                ... and {{ importErrors.length - 10 }} more
+                            </li>
+                        </ul>
+                    </div>
+                    <div
+                        class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700"
+                    >
+                        <SecondaryButton
+                            type="button"
+                            @click="closeImportModal"
+                            class="px-4 py-2"
+                        >
+                            Cancel
+                        </SecondaryButton>
+                        <PrimaryButton
+                            type="submit"
+                            :disabled="!importForm.file || importForm.processing"
+                            class="px-4 py-2"
+                        >
+                            {{ importForm.processing ? "Importing..." : "Import" }}
+                        </PrimaryButton>
+                    </div>
+                </form>
+            </div>
+        </Modal>
+
         <!-- Delete Confirmation Modal -->
         <ConfirmationModal
             :show="showDeleteModal"
@@ -660,3 +947,47 @@ const truncateText = (text, maxLength = 80) => {
         />
     </AdminLayout>
 </template>
+
+<style scoped>
+.drop-zone-beam {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 200vmax;
+    height: 200vmax;
+    margin-left: -100vmax;
+    margin-top: -100vmax;
+    background: conic-gradient(
+        from 0deg,
+        transparent 0deg,
+        #3238a8 20deg,
+        #00c8ff 40deg,
+        transparent 60deg,
+        transparent 60deg 150deg,
+        transparent 150deg,
+        #3238a8 170deg,
+        #00c8ff 190deg,
+        transparent 210deg,
+        transparent 210deg 360deg
+    );
+    animation: border-beam-rotate 3s linear infinite;
+    will-change: transform;
+    border-radius: 50%;
+}
+
+.drop-zone-beam--full {
+    background: conic-gradient(
+        from 0deg,
+        #3238a8,
+        #00c8ff,
+        #3238a8,
+        #00c8ff,
+        #3238a8
+    );
+}
+
+@keyframes border-beam-rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+</style>

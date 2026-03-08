@@ -48,18 +48,12 @@ class SubjectController extends Controller
 
                 // Find which instructor was notified for this request (if any)
                 $selectedInstructorId = null;
-                if ($studentSubject && $studentSubject->status !== 'not_joined') {
+                if ($studentSubject && in_array($studentSubject->status, ['pending', 'approved'])) {
                     $studentName = $student->user->name;
                     $subjectName = $subject->name;
-                    $requestTime = $studentSubject->created_at;
 
                     // Find notification for this request to determine which instructor was selected
-                    $notification = Notification::where('description', 'like', "%{$studentName}%")
-                        ->where('description', 'like', "%{$subjectName}%")
-                        ->whereBetween('created_at', [
-                            $requestTime->copy()->subSeconds(10),
-                            $requestTime->copy()->addSeconds(10)
-                        ])
+                    $notification = Notification::where('description', "{$studentName} has requested to join {$subjectName}.")
                         ->orderBy('created_at', 'desc')
                         ->first();
 
@@ -163,7 +157,7 @@ class SubjectController extends Controller
                     'message' => 'Join request submitted successfully!',
                 ]);
             }
-
+            
             // If pending or approved, show error
             return back()->withErrors([
                 'error' => $existingRequest->status === 'pending'

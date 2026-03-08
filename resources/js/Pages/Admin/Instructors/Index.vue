@@ -7,6 +7,7 @@ import InputLabel from "@/Components/InputLabel.vue";
 import TextInput from "@/Components/TextInput.vue";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import ConfirmationModal from "@/Components/ConfirmationModal.vue";
+import Pagination from "@/Components/Pagination.vue";
 import SearchableSelect from "@/Components/SearchableSelect.vue";
 import { Head, Link, router, useForm } from "@inertiajs/vue3";
 import { ref, watch, computed } from "vue";
@@ -29,6 +30,9 @@ const editingInstructor = ref(null);
 const instructorToDelete = ref(null);
 const searchQuery = ref(props.filters?.search || "");
 const importErrors = ref([]);
+const importErrorMessage = ref("");
+const isImportDragging = ref(false);
+const importFileName = ref("");
 let searchTimeout = null;
 
 const hasInstructors = computed(() => props.instructors.data?.length > 0);
@@ -90,10 +94,27 @@ const closeImportModal = () => {
     importForm.reset();
     importForm.clearErrors();
     importErrors.value = [];
+    importErrorMessage.value = "";
+    importFileName.value = "";
+    isImportDragging.value = false;
 };
 
-const handleFileChange = (event) => {
-    importForm.file = event.target.files[0];
+const handleImportFileChange = (event) => {
+    const file = event.target.files[0];
+    if (file) {
+        importForm.file = file;
+        importFileName.value = file.name;
+    }
+};
+
+const handleImportDrop = (event) => {
+    isImportDragging.value = false;
+    event.preventDefault();
+    const file = event.dataTransfer?.files?.[0];
+    if (file && /\.(xlsx|xls|csv)$/i.test(file.name)) {
+        importForm.file = file;
+        importFileName.value = file.name;
+    }
 };
 
 const downloadTemplate = () => {
@@ -101,16 +122,16 @@ const downloadTemplate = () => {
 };
 
 const submitImport = () => {
+    importErrorMessage.value = "";
     importForm.post(route("admin.instructors.import"), {
         preserveScroll: true,
         onSuccess: (response) => {
             const flash = response.props.flash;
 
             if (flash?.type === "error") {
+                importErrorMessage.value = flash.message || "Import failed. Please try again.";
+                if (flash.errors) importErrors.value = flash.errors;
                 error(flash.message);
-                if (flash.errors) {
-                    importErrors.value = flash.errors;
-                }
                 return;
             }
 
@@ -132,6 +153,7 @@ const submitImport = () => {
             }
         },
         onError: () => {
+            importErrorMessage.value = "Failed to import instructors. Please check your file format.";
             error("Failed to import instructors. Please check your file format.");
         },
     });
@@ -311,7 +333,7 @@ const formatDate = (dateString) => {
         </div>
 
         <!-- Search Bar -->
-        <div class="mb-6">
+        <div class="mb-6 max-w-md">
             <div class="relative">
                 <div
                     class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
@@ -480,257 +502,170 @@ const formatDate = (dateString) => {
             </div>
 
             <!-- Pagination -->
-            <div
-                v-if="props.instructors.links && props.instructors.links.length > 3"
-                class="px-4 py-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between"
-            >
-                <div class="flex-1 flex justify-between sm:hidden">
-                    <Link
-                        v-if="props.instructors.links[0].url"
-                        :href="props.instructors.links[0].url"
-                        class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        preserve-scroll
-                    >
-                        Previous
-                    </Link>
-                    <Link
-                        v-if="props.instructors.links[props.instructors.links.length - 1].url"
-                        :href="props.instructors.links[props.instructors.links.length - 1].url"
-                        class="ml-3 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700"
-                        preserve-scroll
-                    >
-                        Next
-                    </Link>
-                </div>
-                <div
-                    class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between"
-                >
-                    <div>
-                        <p class="text-sm text-gray-700 dark:text-gray-300">
-                            Showing
-                            <span class="font-medium">{{
-                                props.instructors.from || 0
-                            }}</span>
-                            to
-                            <span class="font-medium">{{
-                                props.instructors.to || 0
-                            }}</span>
-                            of
-                            <span class="font-medium">{{
-                                props.instructors.total || 0
-                            }}</span>
-                            results
-                        </p>
-                    </div>
-                    <div class="flex gap-1">
-                        <Link
-                            v-for="(link, index) in props.instructors.links"
-                            :key="index"
-                            :href="link.url || '#'"
-                            v-html="link.label"
-                            :class="[
-                                'px-3 py-2 text-sm font-medium rounded-lg transition-colors duration-150',
-                                link.active
-                                    ? 'bg-indigo-600 text-white'
-                                    : 'text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700',
-                                !link.url ||
-                                link.url === '#' ||
-                                link.url === null
-                                    ? 'opacity-50 cursor-not-allowed pointer-events-none'
-                                    : 'cursor-pointer',
-                            ]"
-                            preserve-scroll
-                        />
-                    </div>
-                </div>
-            </div>
+            <Pagination
+                :links="props.instructors.links || []"
+                :current-page="props.instructors.current_page || 1"
+                :last-page="props.instructors.last_page || 1"
+                :per-page="props.filters?.per_page || 10"
+                :total="props.instructors.total || 0"
+                :from="props.instructors.from || 0"
+                :to="props.instructors.to || 0"
+                route-name="admin.instructors.index"
+                :filters="{ search: props.filters?.search || '' }"
+            />
         </div>
 
         <!-- Import Instructors Modal -->
         <Modal :show="showImportModal" @close="closeImportModal" max-width="lg">
             <div class="p-6">
                 <div class="flex items-center justify-between mb-6">
-                    <h2
-                        class="text-xl font-semibold text-gray-900 dark:text-white"
-                    >
+                    <h2 class="text-xl font-semibold text-gray-900 dark:text-white">
                         Import Instructors
                     </h2>
                     <button
                         @click="closeImportModal"
                         class="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 transition-colors"
                     >
-                        <svg
-                            class="w-6 h-6"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M6 18L18 6M6 6l12 12"
-                            />
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
                         </svg>
                     </button>
                 </div>
-
-                <!-- Instructions -->
-                <div
-                    class="mb-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg"
-                >
-                    <h3
-                        class="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-2"
-                    >
-                        Instructions:
-                    </h3>
-                    <ul
-                        class="text-sm text-blue-800 dark:text-blue-200 space-y-1 list-disc list-inside"
-                    >
-                        <li>
-                            Download the template file and fill it with
-                            instructor data
-                        </li>
-                        <li>
-                            Required columns (in order):
-                            <strong>id_number</strong> (1st column),
-                            <strong>name</strong> (2nd column)
-                        </li>
-                        <li>
-                            All fields are required - no empty cells allowed
-                        </li>
-                        <li>
-                            Select the department for all instructors in the
-                            file
-                        </li>
-                        <li>Maximum file size: 2MB (~500-1000 instructors)</li>
-                        <li>
-                            Supported formats: Excel (.xlsx, .xls) or CSV (.csv)
-                        </li>
-                        <li>
-                            Default password for all imported instructors:
-                            <strong>chcc@2025</strong>
-                        </li>
-                    </ul>
-                </div>
-
-                <!-- Download Template Button -->
-                <div class="mb-6">
-                    <button
-                        type="button"
-                        @click="downloadTemplate"
-                        class="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300 text-sm font-medium rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition-colors duration-200"
-                    >
-                        <svg
-                            class="w-5 h-5"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                stroke-width="2"
-                                d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                            />
-                        </svg>
-                        Download Template
-                    </button>
-                </div>
-
                 <form @submit.prevent="submitImport" class="space-y-6">
+                    <!-- Error message banner -->
+                    <div
+                        v-if="importErrorMessage"
+                        class="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-start gap-3"
+                    >
+                        <svg class="w-5 h-5 text-red-500 dark:text-red-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-red-800 dark:text-red-200">
+                                {{ importErrorMessage }}
+                            </p>
+                        </div>
+                        <button
+                            type="button"
+                            @click="importErrorMessage = ''"
+                            class="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 shrink-0"
+                            aria-label="Dismiss"
+                        >
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                            </svg>
+                        </button>
+                    </div>
+
                     <!-- Department Selection -->
                     <div>
-                        <InputLabel
-                            value="Department *"
-                            class="mb-2"
-                        />
+                        <InputLabel value="Department *" class="mb-2" />
                         <SearchableSelect
                             v-model="importForm.department_id"
                             :options="departmentOptions"
                             placeholder="Search and select department..."
                         />
-                        <InputError
-                            class="mt-2"
-                            :message="importForm.errors.department_id"
-                        />
-                        <p
-                            class="mt-1 text-xs text-gray-500 dark:text-gray-400"
-                        >
-                            All instructors in the file will be assigned to this
-                            department
+                        <InputError class="mt-2" :message="importForm.errors.department_id" />
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            All instructors in the file will be assigned to this department
                         </p>
                     </div>
 
-                    <!-- File Upload -->
+                    <!-- Drag-and-drop file upload -->
                     <div>
-                        <InputLabel
-                            for="import_file"
-                            value="Excel File *"
-                            class="mb-2"
-                        />
-                        <input
-                            id="import_file"
-                            type="file"
-                            accept=".xlsx,.xls,.csv"
-                            @change="handleFileChange"
-                            class="block w-full text-sm text-gray-900 dark:text-gray-300 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer bg-white dark:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 file:mr-4 file:py-2 file:px-4 file:rounded-l-lg file:rounded-r-none file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-indigo-900/30 dark:file:text-indigo-300 file:cursor-pointer"
-                            required
-                        />
-                        <InputError
-                            class="mt-2"
-                            :message="importForm.errors.file"
-                        />
-                        <p
-                            class="mt-1 text-xs text-gray-500 dark:text-gray-400"
-                        >
-                            Maximum file size: 2MB
+                        <p class="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                            Upload an Excel or CSV file with <strong>id_number</strong> (1st column) and <strong>name</strong> (2nd column). Default password: <strong>chcc@2025</strong>. Large imports may take a moment—please wait.
                         </p>
+                        <InputLabel for="import_file" value="Select File" class="mb-2" />
+                        <div
+                            class="mt-1 relative overflow-hidden rounded-lg p-[2px]"
+                            @dragover.prevent="isImportDragging = true"
+                            @dragleave.prevent="isImportDragging = false"
+                            @drop.prevent="handleImportDrop"
+                        >
+                            <!-- Rotating gradient border: 2 lines when empty, full when file selected -->
+                            <div
+                                class="drop-zone-beam"
+                                :class="{ 'drop-zone-beam--full': importForm.file }"
+                            />
+                            <!-- Inner content -->
+                            <div
+                                class="relative flex justify-center px-6 pt-5 pb-6 rounded-[calc(0.5rem-2px)] transition-colors"
+                                :class="isImportDragging
+                                    ? 'bg-indigo-50 dark:bg-indigo-900/20'
+                                    : 'bg-white dark:bg-gray-800'"
+                            >
+                                <div class="space-y-1 text-center">
+                                    <svg
+                                        class="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500"
+                                        stroke="currentColor"
+                                        fill="none"
+                                        viewBox="0 0 48 48"
+                                    >
+                                        <path
+                                            d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                                            stroke-width="2"
+                                            stroke-linecap="round"
+                                            stroke-linejoin="round"
+                                        />
+                                    </svg>
+                                    <div class="flex text-sm text-gray-600 dark:text-gray-400 justify-center">
+                                        <label
+                                            for="import_file"
+                                            class="relative cursor-pointer rounded-md font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-500 dark:hover:text-indigo-300 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-indigo-500"
+                                        >
+                                            <span>Upload a file</span>
+                                            <input
+                                                id="import_file"
+                                                type="file"
+                                                class="sr-only"
+                                                accept=".xlsx,.xls,.csv"
+                                                @change="handleImportFileChange"
+                                            />
+                                        </label>
+                                        <p class="pl-1">or drag and drop</p>
+                                    </div>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                                        XLSX, XLS, CSV up to 2MB
+                                    </p>
+                                    <p v-if="importFileName" class="text-sm font-medium text-gray-700 dark:text-gray-300 mt-2">
+                                        Selected: {{ importFileName }}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                        <InputError class="mt-2" :message="importForm.errors.file" />
+                        <button
+                            type="button"
+                            @click="downloadTemplate"
+                            class="mt-2 text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium"
+                        >
+                            Download template
+                        </button>
                     </div>
 
-                    <!-- Import Errors/Warnings Display -->
+                    <!-- Skipped rows / warnings -->
                     <div
                         v-if="importErrors.length > 0"
-                        class="p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg"
+                        class="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg max-h-32 overflow-y-auto"
                     >
-                        <h4
-                            class="text-sm font-semibold text-yellow-900 dark:text-yellow-100 mb-2"
-                        >
-                            Import Warnings ({{ importErrors.length }}):
-                        </h4>
-                        <div class="max-h-40 overflow-y-auto">
-                            <ul
-                                class="text-xs text-yellow-800 dark:text-yellow-200 space-y-1"
-                            >
-                                <li
-                                    v-for="(err, idx) in importErrors"
-                                    :key="idx"
-                                >
-                                    • {{ err }}
-                                </li>
-                            </ul>
-                        </div>
+                        <p class="text-xs font-medium text-amber-800 dark:text-amber-300 mb-2">Skipped rows:</p>
+                        <ul class="text-xs text-amber-700 dark:text-amber-400 space-y-1">
+                            <li v-for="(err, idx) in importErrors.slice(0, 10)" :key="idx">{{ err }}</li>
+                            <li v-if="importErrors.length > 10" class="text-amber-600 dark:text-amber-500">... and {{ importErrors.length - 10 }} more</li>
+                        </ul>
                     </div>
 
-                    <!-- Action Buttons -->
-                    <div
-                        class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700"
-                    >
-                        <SecondaryButton
-                            type="button"
-                            @click="closeImportModal"
-                            class="px-4 py-2"
-                        >
+                    <div class="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                        <SecondaryButton type="button" @click="closeImportModal" class="px-4 py-2">
                             Cancel
                         </SecondaryButton>
                         <PrimaryButton
-                            :disabled="importForm.processing"
+                            type="submit"
+                            :disabled="!importForm.file || !importForm.department_id || importForm.processing"
                             class="px-4 py-2"
                         >
-                            <span v-if="importForm.processing"
-                                >Importing...</span
-                            >
-                            <span v-else>Import Instructors</span>
+                            {{ importForm.processing ? "Importing..." : "Import Instructors" }}
                         </PrimaryButton>
                     </div>
                 </form>
@@ -995,3 +930,57 @@ const formatDate = (dateString) => {
         />
     </AdminLayout>
 </template>
+
+<style scoped>
+.drop-zone-beam {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    /* Perfect square (circle) para umikot ang gradient sa buong border */
+    width: 200vmax;
+    height: 200vmax;
+    margin-left: -100vmax;
+    margin-top: -100vmax;
+    /* 2 lines na gradient #3238a8 → #00c8ff */
+    background: conic-gradient(
+        from 0deg,
+        /* Line 1 - gradient #3238a8 → #00c8ff */
+        transparent 0deg,
+        #3238a8 20deg,
+        #00c8ff 40deg,
+        transparent 60deg,
+        /* Dim */
+        transparent 60deg 150deg,
+        /* Line 2 - gradient #3238a8 → #00c8ff (180° from line 1) */
+        transparent 150deg,
+        #3238a8 170deg,
+        #00c8ff 190deg,
+        transparent 210deg,
+        /* Dim */
+        transparent 210deg 360deg
+    );
+    animation: border-beam-rotate 3s linear infinite;
+    will-change: transform;
+    border-radius: 50%;
+}
+
+.drop-zone-beam--full {
+    background: conic-gradient(
+        from 0deg,
+        #3238a8,
+        #00c8ff,
+        #3238a8,
+        #00c8ff,
+        #3238a8
+    );
+}
+
+@keyframes border-beam-rotate {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+</style>

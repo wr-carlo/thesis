@@ -107,7 +107,102 @@
                         <option value="published">Published</option>
                     </select>
                 </div>
+
+                <!-- Section Filter Dropdown -->
+                <div class="relative">
+                    <button
+                        type="button"
+                        @click="sectionDropdownOpen = !sectionDropdownOpen"
+                        class="inline-flex items-center justify-between w-full min-w-[180px] px-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white hover:bg-gray-50 dark:hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:focus:ring-indigo-400 focus:border-transparent text-sm"
+                    >
+                        <span class="truncate">
+                            {{ sectionFilterLabel }}
+                        </span>
+                        <svg
+                            class="ml-2 h-4 w-4 shrink-0 transition-transform"
+                            :class="{ 'rotate-180': sectionDropdownOpen }"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                        >
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </button>
+
+                    <!-- Dropdown Panel -->
+                    <Transition
+                        enter-active-class="transition ease-out duration-100"
+                        enter-from-class="opacity-0 scale-95"
+                        enter-to-class="opacity-100 scale-100"
+                        leave-active-class="transition ease-in duration-75"
+                        leave-from-class="opacity-100 scale-100"
+                        leave-to-class="opacity-0 scale-95"
+                    >
+                        <div
+                            v-show="sectionDropdownOpen"
+                            class="absolute right-0 z-50 mt-1 w-72 origin-top-right rounded-lg bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700 py-1 max-h-64 overflow-auto"
+                        >
+                            <div class="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+                                <p class="text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                                    Filter by sections
+                                </p>
+                            </div>
+                            <div class="py-1">
+                                <label
+                                    v-for="section in sections"
+                                    :key="section.id"
+                                    class="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        :value="section.id"
+                                        v-model="selectedSectionIds"
+                                        @change="handleSectionFilterChange"
+                                        class="rounded border-gray-300 dark:border-gray-600 text-indigo-600 focus:ring-indigo-500 dark:bg-gray-700"
+                                    />
+                                    <div class="flex-1 min-w-0">
+                                        <span class="block text-sm text-gray-900 dark:text-white truncate">
+                                            {{ section.name }}
+                                        </span>
+                                        <span
+                                            v-if="section.department"
+                                            class="block text-xs text-gray-500 dark:text-gray-400 truncate"
+                                        >
+                                            {{ section.department.name }}
+                                        </span>
+                                    </div>
+                                </label>
+                                <div
+                                    v-if="sections.length === 0"
+                                    class="px-3 py-4 text-center text-sm text-gray-500 dark:text-gray-400"
+                                >
+                                    No sections available
+                                </div>
+                            </div>
+                            <div
+                                v-if="selectedSectionIds.length > 0"
+                                class="px-3 py-2 border-t border-gray-200 dark:border-gray-700"
+                            >
+                                <button
+                                    type="button"
+                                    @click="clearSectionFilter"
+                                    class="text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300"
+                                >
+                                    Clear selection
+                                </button>
+                            </div>
+                        </div>
+                    </Transition>
+                </div>
             </div>
+
+            <!-- Click outside overlay to close section dropdown -->
+            <div
+                v-if="sectionDropdownOpen"
+                @click="sectionDropdownOpen = false"
+                class="fixed inset-0 z-40"
+                aria-hidden="true"
+            />
 
             <!-- Lessons Grid -->
             <div
@@ -216,6 +311,36 @@
                                         : "questions"
                                 }}
                             </span>
+                        </div>
+
+                        <!-- Assigned Sections (expandable) -->
+                        <div
+                            v-if="
+                                lesson.assessments?.[0]?.sections?.length > 0
+                            "
+                            class="mb-4"
+                        >
+                            <div class="flex flex-wrap gap-1.5">
+                                <span
+                                    v-for="sec in getVisibleSections(lesson)"
+                                    :key="sec.id"
+                                    class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 shrink-0"
+                                >
+                                    {{ sec.name }}
+                                </span>
+                            </div>
+                            <button
+                                v-if="getHiddenSectionCount(lesson) > 0 || expandedSections[lesson.id]"
+                                type="button"
+                                @click="toggleSectionsExpand(lesson.id)"
+                                class="mt-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 focus:outline-none"
+                            >
+                                {{
+                                    expandedSections[lesson.id]
+                                        ? "Show less"
+                                        : `+${getHiddenSectionCount(lesson)} more`
+                                }}
+                            </button>
                         </div>
 
                         <!-- Footer -->
@@ -391,18 +516,23 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { ref, computed, watch } from "vue";
 import { Link, router, Head } from "@inertiajs/vue3";
 import InstructorLayout from "@/Layouts/InstructorLayout.vue";
 import ConfirmationModal from "@/Components/ConfirmationModal.vue";
 
 const props = defineProps({
     lessons: Object,
+    sections: {
+        type: Array,
+        default: () => [],
+    },
     filters: {
         type: Object,
         default: () => ({
             search: "",
             status: "all",
+            section_ids: [],
         }),
     },
 });
@@ -411,7 +541,53 @@ const showDeleteModal = ref(false);
 const lessonToDelete = ref(null);
 const searchQuery = ref(props.filters?.search || "");
 const statusFilter = ref(props.filters?.status || "all");
+const selectedSectionIds = ref([...(props.filters?.section_ids || [])].map(Number));
+const sectionDropdownOpen = ref(false);
 let searchTimeout = null;
+
+const SECTION_PREVIEW_LIMIT = 4;
+const expandedSections = ref({});
+
+const getVisibleSections = (lesson) => {
+    const sections = lesson.assessments?.[0]?.sections || [];
+    if (sections.length === 0) return [];
+    if (expandedSections.value[lesson.id]) return sections;
+    return sections.slice(0, SECTION_PREVIEW_LIMIT);
+};
+
+const getHiddenSectionCount = (lesson) => {
+    const sections = lesson.assessments?.[0]?.sections || [];
+    const visible = getVisibleSections(lesson).length;
+    return Math.max(0, sections.length - visible);
+};
+
+const toggleSectionsExpand = (lessonId) => {
+    expandedSections.value = {
+        ...expandedSections.value,
+        [lessonId]: !expandedSections.value[lessonId],
+    };
+};
+
+const sectionFilterLabel = computed(() => {
+    if (selectedSectionIds.value.length === 0) return "All Sections";
+    if (selectedSectionIds.value.length === 1) {
+        const s = props.sections?.find((sec) => sec.id === selectedSectionIds.value[0]);
+        return s ? s.name : "1 section";
+    }
+    return `${selectedSectionIds.value.length} sections`;
+});
+
+// Sync section filter when props change (e.g. browser back/forward)
+watch(
+    () => props.filters?.section_ids,
+    (ids) => {
+        const newIds = [...(ids || [])].map(Number);
+        if (JSON.stringify([...selectedSectionIds.value].sort()) !== JSON.stringify([...newIds].sort())) {
+            selectedSectionIds.value = newIds;
+        }
+    },
+    { immediate: true }
+);
 
 const formatDate = (date) => {
     return new Date(date).toLocaleDateString("en-US", {
@@ -458,18 +634,28 @@ const confirmDelete = () => {
 };
 
 const applyFilters = () => {
-    router.get(
-        route("instructor.lessons.index"),
-        {
-            search: searchQuery.value || null,
-            status: statusFilter.value,
-        },
-        {
-            preserveState: true,
-            preserveScroll: true,
-            replace: true,
-        }
-    );
+    const params = {
+        search: searchQuery.value || null,
+        status: statusFilter.value,
+    };
+    if (selectedSectionIds.value.length > 0) {
+        params.section_ids = selectedSectionIds.value;
+    }
+    router.get(route("instructor.lessons.index"), params, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+};
+
+const handleSectionFilterChange = () => {
+    applyFilters();
+};
+
+const clearSectionFilter = () => {
+    selectedSectionIds.value = [];
+    applyFilters();
+    sectionDropdownOpen.value = false;
 };
 
 const handleSearch = () => {

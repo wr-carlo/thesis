@@ -41,7 +41,7 @@ class LessonController extends Controller
         $professor = auth()->user()->professor;
 
         $query = Lesson::where('professor_id', $professor->id)
-            ->with(['subject', 'assessments.items']);
+            ->with(['subject', 'assessments.items', 'assessments.sections']);
 
         // Search filter
         if ($request->has('search') && $request->search) {
@@ -61,13 +61,46 @@ class LessonController extends Controller
             });
         }
 
+        // Section filter - show lessons whose assessments are assigned to ANY of the selected sections
+        $sectionIds = $request->input('section_ids', []);
+        if (!empty($sectionIds) && is_array($sectionIds)) {
+            $sectionIds = array_filter(array_map('intval', $sectionIds));
+            if (!empty($sectionIds)) {
+                $query->whereHas('assessments', function ($assessmentQuery) use ($sectionIds) {
+                    $assessmentQuery->whereHas('sections', function ($sectionQuery) use ($sectionIds) {
+                        $sectionQuery->whereIn('sections.id', $sectionIds);
+                    });
+                });
+            }
+        }
+
         $lessons = $query->latest()->paginate(6)->withQueryString();
+
+        // Load all sections with departments for the filter dropdown
+        $sections = \App\Models\Section::with('department')
+            ->orderBy('department_id')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($section) {
+                return [
+                    'id' => $section->id,
+                    'name' => $section->name,
+                    'department' => $section->department ? [
+                        'id' => $section->department->id,
+                        'name' => $section->department->name,
+                    ] : null,
+                ];
+            })
+            ->values()
+            ->all();
 
         return Inertia::render('Instructor/Lessons/Index', [
             'lessons' => $lessons,
+            'sections' => $sections,
             'filters' => [
                 'search' => $request->search ?? '',
                 'status' => $request->status ?? 'all',
+                'section_ids' => $request->input('section_ids', []),
             ],
         ]);
     }
@@ -290,8 +323,18 @@ class LessonController extends Controller
             }
 
             try {
+                // Normalize question_distribution: ensure each level has mcq, identification, tf (default 0 for missing)
+                $distribution = [];
+                foreach ($request->question_distribution ?? [] as $level => $counts) {
+                    $distribution[$level] = [
+                        'mcq' => (int) ($counts['mcq'] ?? 0),
+                        'identification' => (int) ($counts['identification'] ?? 0),
+                        'tf' => (int) ($counts['tf'] ?? 0),
+                    ];
+                }
+
                 $config = [
-                    'question_distribution' => $request->question_distribution,
+                    'question_distribution' => $distribution,
                     'bloom_levels' => $request->bloom_levels,
                 ];
 

@@ -629,6 +629,7 @@ import InstructorLayout from "@/Layouts/InstructorLayout.vue";
 import SectionAssignment from "@/Components/SectionAssignment.vue";
 import InputError from "@/Components/InputError.vue";
 import { Head } from "@inertiajs/vue3";
+import { useToast } from "@/Stores/useToast";
 
 const props = defineProps({
     lesson: Object,
@@ -638,6 +639,8 @@ const props = defineProps({
     selectedSectionIds: Array,
     aiMetadata: Object,
 });
+
+const { success: showToast } = useToast();
 
 // Ensure items have proper structure, especially choices as arrays
 const items = ref(
@@ -883,6 +886,11 @@ const saveAssessment = (status = 'draft') => {
         {
             onSuccess: () => {
                 saving.value = false;
+                const msg =
+                    status === "draft"
+                        ? "Assessment saved as draft successfully!"
+                        : "Assessment published successfully!";
+                showToast(msg);
             },
             onError: () => {
                 saving.value = false;

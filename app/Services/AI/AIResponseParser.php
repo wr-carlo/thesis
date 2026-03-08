@@ -15,34 +15,27 @@ class AIResponseParser
      */
     public function parse(array $response): array
     {
-        Log::info('AIResponseParser: Received data for parsing', [
-            'keys' => array_keys($response),
-            'multiple_choice_count' => count($response['multiple_choice'] ?? []),
-            'identification_count' => count($response['identification'] ?? []),
-            'true_or_false_count' => count($response['true_or_false'] ?? []),
+        // Normalize: allow partial question types - default missing keys to empty arrays
+        $response['multiple_choice'] = isset($response['multiple_choice']) && is_array($response['multiple_choice'])
+            ? $response['multiple_choice'] : [];
+        $response['identification'] = isset($response['identification']) && is_array($response['identification'])
+            ? $response['identification'] : [];
+        $response['true_or_false'] = isset($response['true_or_false']) && is_array($response['true_or_false'])
+            ? $response['true_or_false'] : [];
+
+        // At least one question type must have questions
+        $totalCount = count($response['multiple_choice']) + count($response['identification']) + count($response['true_or_false']);
+        if ($totalCount === 0) {
+            throw new \Exception('Invalid AI response: no questions were generated. Please try again.');
+        }
+
+        Log::info('AIResponseParser: Parsed data', [
+            'multiple_choice_count' => count($response['multiple_choice']),
+            'identification_count' => count($response['identification']),
+            'true_or_false_count' => count($response['true_or_false']),
         ]);
 
-        // Validate structure
-        if (!isset($response['multiple_choice']) || 
-            !isset($response['identification']) || 
-            !isset($response['true_or_false'])) {
-            Log::error('AIResponseParser: Missing required keys', [
-                'has_multiple_choice' => isset($response['multiple_choice']),
-                'has_identification' => isset($response['identification']),
-                'has_true_or_false' => isset($response['true_or_false']),
-                'actual_keys' => array_keys($response),
-            ]);
-            throw new \Exception('Invalid AI response structure: missing required keys. Keys found: ' . implode(', ', array_keys($response)));
-        }
-
-        // Validate arrays
-        if (!is_array($response['multiple_choice']) || 
-            !is_array($response['identification']) || 
-            !is_array($response['true_or_false'])) {
-            throw new \Exception('Invalid AI response structure: values must be arrays');
-        }
-
-        // Validate each question type
+        // Validate each question type (empty arrays pass validation)
         $this->validateMultipleChoiceQuestions($response['multiple_choice']);
         $this->validateIdentificationQuestions($response['identification']);
         $this->validateTrueOrFalseQuestions($response['true_or_false']);
