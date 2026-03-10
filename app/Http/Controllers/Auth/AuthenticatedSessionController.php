@@ -28,7 +28,7 @@ class AuthenticatedSessionController extends Controller
     /**
      * Handle an incoming authentication request.
      */
-    public function store(LoginRequest $request): RedirectResponse
+    public function store(LoginRequest $request): RedirectResponse|\Symfony\Component\HttpFoundation\Response
     {
         $request->authenticate();
 
@@ -37,12 +37,20 @@ class AuthenticatedSessionController extends Controller
         $user = auth()->user();
 
         // Redirect based on user role
-        if ($user->role === 'admin') {
-            return redirect()->intended(route('admin.dashboard'));
-        } elseif ($user->role === 'instructor') {
-            return redirect()->intended(route('instructor.dashboard'));
-        } elseif ($user->role === 'student') {
-            return redirect()->intended(route('student.dashboard'));
+        $redirectUrl = match ($user->role) {
+            'admin' => route('admin.dashboard'),
+            'instructor' => route('instructor.dashboard'),
+            'student' => route('student.dashboard'),
+            default => null,
+        };
+
+        if ($redirectUrl) {
+            // Force full page redirect to ensure session cookie is properly sent.
+            // Inertia XHR redirects can fail to attach the new session on first request after login.
+            if ($request->header('X-Inertia')) {
+                return Inertia::location($redirectUrl);
+            }
+            return redirect()->intended($redirectUrl);
         }
 
         // If role is not recognized, logout and return error
