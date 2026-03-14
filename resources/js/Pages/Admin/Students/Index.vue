@@ -15,6 +15,7 @@ import { useToast } from "@/Stores/useToast";
 
 const props = defineProps({
     students: Object,
+    departments: Array,
     sections: Array,
     filters: Object,
 });
@@ -29,6 +30,16 @@ const showDeleteModal = ref(false);
 const editingStudent = ref(null);
 const studentToDelete = ref(null);
 const searchQuery = ref(props.filters?.search || "");
+const departmentFilterId = ref(
+    props.filters?.department_id != null && props.filters.department_id !== ""
+        ? String(props.filters.department_id)
+        : ""
+);
+const sectionFilterId = ref(
+    props.filters?.section_id != null && props.filters.section_id !== ""
+        ? String(props.filters.section_id)
+        : ""
+);
 const importErrors = ref([]);
 const importErrorMessage = ref("");
 const isImportDragging = ref(false);
@@ -36,24 +47,80 @@ const importFileName = ref("");
 let searchTimeout = null;
 
 const hasStudents = computed(() => props.students.data?.length > 0);
+const hasActiveFilters = computed(
+    () => searchQuery.value || departmentFilterId.value || sectionFilterId.value
+);
 
-// Reactive search with debouncing
-watch(searchQuery, (newValue) => {
-    if (searchTimeout) {
-        clearTimeout(searchTimeout);
+// Department options for filter
+const departmentFilterOptions = computed(() => [
+    { value: "", label: "All departments" },
+    ...(props.departments || []).map((d) => ({
+        value: String(d.id),
+        label: d.name,
+    })),
+]);
+
+// Section options for filter - filtered by selected department (cascading)
+const sectionFilterOptions = computed(() => {
+    const base = [{ value: "", label: "All sections" }];
+    const sections = props.sections || [];
+    const deptId = departmentFilterId.value;
+
+    if (!deptId) {
+        // No department selected: show all sections
+        const opts = sections.map((s) => ({
+            value: String(s.id),
+            label: s.name,
+            sublabel: s.department?.name,
+        }));
+        return [...base, ...opts];
     }
 
-    searchTimeout = setTimeout(() => {
-        router.get(
-            route("admin.students.index"),
-            { search: newValue, per_page: props.filters?.per_page || 10 },
-            {
-                preserveState: true,
-                preserveScroll: false,
-                replace: true,
-            }
+    // Department selected: show only sections in that department
+    const filtered = sections
+        .filter((s) => String(s.department_id) === deptId)
+        .map((s) => ({
+            value: String(s.id),
+            label: s.name,
+        }));
+    return [...base, ...filtered];
+});
+
+const applyFilters = () => {
+    router.get(route("admin.students.index"), {
+        search: searchQuery.value,
+        department_id: departmentFilterId.value || undefined,
+        section_id: sectionFilterId.value || undefined,
+        per_page: props.filters?.per_page || 10,
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+};
+
+// When department changes, reset section filter (section may not belong to new department)
+watch(departmentFilterId, (newDeptId, oldDeptId) => {
+    if (newDeptId !== oldDeptId && sectionFilterId.value) {
+        const sectionsInDept = (props.sections || []).filter(
+            (s) => String(s.department_id) === newDeptId
         );
-    }, 500);
+        const currentSectionValid = sectionsInDept.some(
+            (s) => String(s.id) === sectionFilterId.value
+        );
+        if (!currentSectionValid) {
+            sectionFilterId.value = "";
+        }
+    }
+    applyFilters();
+});
+
+watch(sectionFilterId, applyFilters);
+
+// Reactive search with debouncing
+watch(searchQuery, () => {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(applyFilters, 500);
 });
 
 const createForm = useForm({
@@ -74,9 +141,10 @@ const importForm = useForm({
 });
 
 const sectionOptions = computed(() =>
-    props.sections.map((s) => ({
+    (props.sections || []).map((s) => ({
         value: s.id,
         label: s.name,
+        sublabel: s.department?.name,
     }))
 );
 
@@ -325,14 +393,15 @@ const formatDate = (dateString) => {
             </div>
         </div>
 
-        <!-- Search Bar -->
-        <div class="mb-6 max-w-md">
-            <div class="relative">
-                <div
-                    class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-                >
+        <!-- Search & Filters (cascading: Department → Section) -->
+        <div class="mb-6 flex flex-col sm:flex-row gap-4">
+            <div class="flex-1 min-w-0">
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                    Search
+                </label>
+                <div class="relative">
                     <svg
-                        class="h-5 w-5 text-gray-400 dark:text-gray-500"
+                        class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -344,13 +413,33 @@ const formatDate = (dateString) => {
                             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                         />
                     </svg>
+                    <input
+                        id="search"
+                        v-model="searchQuery"
+                        type="text"
+                        placeholder="Search by ID number or name..."
+                        class="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all"
+                    />
                 </div>
-                <input
-                    id="search"
-                    v-model="searchQuery"
-                    type="text"
-                    placeholder="Search by ID number or name..."
-                    class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+            </div>
+            <div class="sm:w-64">
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                    Filter by department
+                </label>
+                <SearchableSelect
+                    v-model="departmentFilterId"
+                    :options="departmentFilterOptions"
+                    placeholder="Filter by department..."
+                />
+            </div>
+            <div class="sm:w-64">
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                    Filter by section
+                </label>
+                <SearchableSelect
+                    v-model="sectionFilterId"
+                    :options="sectionFilterOptions"
+                    placeholder="Filter by section..."
                 />
             </div>
         </div>
@@ -377,11 +466,13 @@ const formatDate = (dateString) => {
                 <h3
                     class="text-sm font-medium text-gray-900 dark:text-white mb-1"
                 >
-                    No students found
+                    {{ hasActiveFilters ? "No students found" : "No students" }}
                 </h3>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    Get started by creating a new student or importing from a
-                    file.
+                    {{ hasActiveFilters
+                        ? "Try adjusting your search or filters."
+                        : "Get started by creating a new student or importing from a file."
+                    }}
                 </p>
                 <div class="flex gap-2 justify-center">
                     <button
@@ -508,7 +599,11 @@ const formatDate = (dateString) => {
                 :from="props.students.from || 0"
                 :to="props.students.to || 0"
                 route-name="admin.students.index"
-                :filters="{ search: props.filters?.search || '' }"
+                :filters="{
+                    search: searchQuery || props.filters?.search || '',
+                    department_id: departmentFilterId || props.filters?.department_id || '',
+                    section_id: sectionFilterId || props.filters?.section_id || '',
+                }"
             />
         </div>
 

@@ -21,6 +21,7 @@
     },
     "dependencies": {
         "@lottiefiles/dotlottie-vue": "^0.11.3",
+        "pinia": "^2.1.7",
         "ziggy-js": "^2.6.0"
     }
 }

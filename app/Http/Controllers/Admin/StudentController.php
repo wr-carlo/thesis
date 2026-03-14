@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StudentImportRequest;
 use App\Http\Requests\Admin\StudentStoreRequest;
 use App\Http\Requests\Admin\StudentUpdateRequest;
+use App\Models\Department;
 use App\Models\Log as LogModel;
 use App\Models\Section;
 use App\Models\Student;
@@ -23,9 +24,11 @@ class StudentController extends Controller
     public function index(Request $request)
     {
         $search = $request->string('search')->toString();
+        $departmentId = $request->input('department_id');
+        $sectionId = $request->input('section_id');
         $perPage = min(max((int) $request->input('per_page', 10), 1), 100);
 
-        $students = User::with(['student.section'])
+        $students = User::with(['student.section.department'])
             ->where('role', 'student')
             ->when($search, function ($query, $term) {
                 $query->where(function ($q) use ($term) {
@@ -33,15 +36,24 @@ class StudentController extends Controller
                         ->orWhere('id_number', 'like', "%{$term}%");
                 });
             })
+            ->when($sectionId, function ($query, $id) {
+                $query->whereHas('student', fn ($q) => $q->where('section_id', $id));
+            })
+            ->when($departmentId && ! $sectionId, function ($query, $id) {
+                $query->whereHas('student.section', fn ($q) => $q->where('department_id', $id));
+            })
             ->orderBy('name')
             ->paginate($perPage)
             ->withQueryString();
 
         return Inertia::render('Admin/Students/Index', [
             'students' => $students,
-            'sections' => Section::orderBy('name')->get(),
+            'departments' => Department::orderBy('name')->get(),
+            'sections' => Section::with('department')->orderBy('name')->get(),
             'filters' => [
                 'search' => $search,
+                'department_id' => $departmentId,
+                'section_id' => $sectionId,
                 'per_page' => $perPage,
             ],
         ]);

@@ -1,7 +1,22 @@
 <template>
     <InstructorLayout>
         <Head title="Review Assessment" />
-        <div class="py-12">
+        <div v-if="loadError" class="py-12">
+            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+                    <p class="text-amber-600 dark:text-amber-400">{{ loadError }}</p>
+                    <p class="mt-2 text-sm text-gray-500 dark:text-gray-400">Redirecting to create page...</p>
+                </div>
+            </div>
+        </div>
+        <div v-else-if="!reviewData" class="py-12">
+            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+                <div class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg p-6">
+                    <p class="text-gray-500 dark:text-gray-400">Loading...</p>
+                </div>
+            </div>
+        </div>
+        <div v-else class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <div
                     class="bg-white dark:bg-gray-800 overflow-hidden shadow-sm sm:rounded-lg"
@@ -29,6 +44,14 @@
                                     over.
                                 </p>
                             </div>
+                        </div>
+
+                        <!-- Save Error Banner -->
+                        <div
+                            v-if="saveError"
+                            class="mb-4 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300"
+                        >
+                            {{ saveError }}
                         </div>
 
                         <!-- AI Provider Info -->
@@ -623,46 +646,104 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
-import { router } from "@inertiajs/vue3";
+import { ref, computed, onMounted } from "vue";
+import { router, usePage } from "@inertiajs/vue3";
 import InstructorLayout from "@/Layouts/InstructorLayout.vue";
 import SectionAssignment from "@/Components/SectionAssignment.vue";
 import InputError from "@/Components/InputError.vue";
 import { Head } from "@inertiajs/vue3";
 import { useToast } from "@/Stores/useToast";
+import { useLessonReviewStore } from "@/Stores/useLessonReview";
 
 const props = defineProps({
-    lesson: Object,
-    items: Array,
+    token: String,
+    subjects: Array,
     departments: Array,
     sections: Array,
-    selectedSectionIds: Array,
-    aiMetadata: Object,
 });
 
 const { success: showToast } = useToast();
+const lessonReviewStore = useLessonReviewStore();
+const page = usePage();
+
+const saveError = computed(() => {
+    const err = page.props.errors?.error;
+    return typeof err === "string" ? err : null;
+});
+
+// Raw data loaded from Pinia
+const reviewData = ref(null);
+const loadError = ref(null);
+
+// Transform questions from Pinia data into items format
+function questionsToItems(questions) {
+    if (!questions || typeof questions !== "object") return [];
+    const result = [];
+    for (const type of ["multiple_choice", "identification", "true_or_false"]) {
+        const arr = questions[type];
+        if (Array.isArray(arr)) {
+            for (const q of arr) {
+                const item = {
+                    type,
+                    question: q.question || "",
+                    correct_answer: q.correct_answer || "",
+                    bloom_level: q.bloom_level ?? null,
+                };
+                if (type === "multiple_choice" && Array.isArray(q.choices)) {
+                    item.choices = [...q.choices];
+                } else {
+                    item.choices = null;
+                }
+                result.push(item);
+            }
+        }
+    }
+    return result;
+}
 
 // Ensure items have proper structure, especially choices as arrays
-const items = ref(
-    (props.items || []).map((item) => {
+const items = ref([]);
+
+// Lesson display object (for header)
+const lesson = computed(() => {
+    if (!reviewData.value) return { title: "", subject: null };
+    const subject = (props.subjects || []).find(
+        (s) => String(s.id) === String(reviewData.value.subject_id)
+    );
+    return {
+        title: reviewData.value.title || "",
+        subject: subject ? { name: subject.name } : null,
+    };
+});
+
+// AI metadata for display
+const aiMetadata = computed(() => reviewData.value?.ai_metadata ?? {});
+
+onMounted(() => {
+    const data = lessonReviewStore.load(props.token);
+    if (!data) {
+        loadError.value = "Review session expired or not found. Please create a new assessment.";
+        router.visit(route("instructor.lessons.create"), {
+            preserveState: false,
+            onSuccess: () => {
+                // Flash will be set by backend if we add it
+            },
+        });
+        return;
+    }
+    reviewData.value = data;
+    const rawItems = questionsToItems(data.questions);
+    items.value = rawItems.map((item) => {
         if (item.type === "multiple_choice") {
-            // Ensure choices is always an array
             if (!item.choices || !Array.isArray(item.choices)) {
-                // If choices is a string, try to parse it
-                if (typeof item.choices === "string") {
-                    try {
-                        item.choices = JSON.parse(item.choices);
-                    } catch (e) {
-                        item.choices = [];
-                    }
-                } else {
-                    item.choices = [];
-                }
+                item.choices = typeof item.choices === "string"
+                    ? (() => { try { return JSON.parse(item.choices); } catch { return []; } })()
+                    : [];
             }
         }
         return item;
-    })
-);
+    });
+});
 
 // Question type counts
 const questionCounts = computed(() => {
@@ -753,7 +834,7 @@ const providerBadgeClass = computed(() => {
 });
 const saving = ref(false);
 const cancelling = ref(false);
-const selectedSectionIds = ref([...(props.selectedSectionIds || [])]);
+const selectedSectionIds = ref([]);
 
 // Bloom's Taxonomy badge styling
 const bloomBadgeStyles = {
@@ -868,35 +949,46 @@ const deleteItem = (index) => {
     }
 };
 
-const saveAssessment = (status = 'draft') => {
+const saveAssessment = (status = "draft") => {
     if (items.value.length === 0) {
         alert("Please add at least one question before saving.");
         return;
     }
+    if (!reviewData.value) return;
 
     saving.value = true;
 
-    router.post(
-        route("instructor.lessons.review.save"),
-        {
-            items: items.value,
-            section_ids: selectedSectionIds.value,
-            status: status,
+    const payload = {
+        subject_id: reviewData.value.subject_id,
+        professor_id: reviewData.value.professor_id,
+        title: reviewData.value.title,
+        file_path: reviewData.value.file_path,
+        extracted_content: reviewData.value.extracted_content,
+        assessment_title: reviewData.value.assessment_title,
+        file_name: reviewData.value.file_name ?? null,
+        file_size: reviewData.value.file_size ?? null,
+        mime_type: reviewData.value.mime_type ?? null,
+        ai_metadata: reviewData.value.ai_metadata ?? {},
+        items: items.value,
+        section_ids: selectedSectionIds.value,
+        status,
+    };
+
+    router.post(route("instructor.lessons.review.save"), payload, {
+        onSuccess: () => {
+            saving.value = false;
+            lessonReviewStore.remove(props.token);
+            const msg =
+                status === "draft"
+                    ? "Assessment saved as draft successfully!"
+                    : "Assessment published successfully!";
+            showToast(msg);
         },
-        {
-            onSuccess: () => {
-                saving.value = false;
-                const msg =
-                    status === "draft"
-                        ? "Assessment saved as draft successfully!"
-                        : "Assessment published successfully!";
-                showToast(msg);
-            },
-            onError: () => {
-                saving.value = false;
-            },
-        }
-    );
+        onError: (errors) => {
+            saving.value = false;
+            // Errors are shown via page.props.errors in saveError computed
+        },
+    });
 };
 
 const cancelReview = () => {
@@ -907,15 +999,20 @@ const cancelReview = () => {
     ) {
         return;
     }
+    if (!reviewData.value?.file_path) {
+        router.visit(route("instructor.lessons.create"));
+        return;
+    }
 
     cancelling.value = true;
 
     router.post(
         route("instructor.lessons.review.cancel"),
-        {},
+        { file_path: reviewData.value.file_path },
         {
             onSuccess: () => {
                 cancelling.value = false;
+                lessonReviewStore.remove(props.token);
             },
             onError: () => {
                 cancelling.value = false;

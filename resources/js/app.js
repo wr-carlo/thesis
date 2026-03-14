@@ -1,6 +1,7 @@
 import "./bootstrap";
 import "../css/app.css";
 
+import { createPinia } from "pinia";
 import { ZiggyVue } from "ziggy-js";
 import { createApp, h } from "vue";
 import { createInertiaApp, router } from "@inertiajs/vue3";
@@ -44,7 +45,7 @@ createInertiaApp({
             render: () => h("div", [h(App, props), h(LoadingIndicator)]),
         });
 
-        return app.use(plugin).use(ZiggyVue).mount(el);
+        return app.use(createPinia()).use(plugin).use(ZiggyVue).mount(el);
     },
     progress: {
         color: "#086fff",

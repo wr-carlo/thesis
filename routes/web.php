@@ -122,8 +122,8 @@ Route::middleware(['auth', 'instructor'])->prefix('instructor')->as('instructor.
     Route::post('lessons/{lesson}/publish', [\App\Http\Controllers\Instructor\LessonController::class, 'publish'])->name('lessons.publish');
     Route::post('lessons/{lesson}/unpublish', [\App\Http\Controllers\Instructor\LessonController::class, 'unpublish'])->name('lessons.unpublish');
 
-    // Lesson Review (session-based)
-    Route::get('lessons/review', [\App\Http\Controllers\Instructor\LessonController::class, 'review'])->name('lessons.review');
+    // Lesson Review (Pinia + token-based)
+    Route::get('lessons/review/{token}', [\App\Http\Controllers\Instructor\LessonController::class, 'review'])->name('lessons.review');
     Route::post('lessons/review/save', [\App\Http\Controllers\Instructor\LessonController::class, 'saveFromReview'])->name('lessons.review.save');
     Route::post('lessons/review/cancel', [\App\Http\Controllers\Instructor\LessonController::class, 'cancelReview'])->name('lessons.review.cancel');
 

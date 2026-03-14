@@ -29,6 +29,11 @@ const showDeleteModal = ref(false);
 const editingInstructor = ref(null);
 const instructorToDelete = ref(null);
 const searchQuery = ref(props.filters?.search || "");
+const departmentFilterId = ref(
+    props.filters?.department_id != null && props.filters.department_id !== ""
+        ? String(props.filters.department_id)
+        : ""
+);
 const importErrors = ref([]);
 const importErrorMessage = ref("");
 const isImportDragging = ref(false);
@@ -36,24 +41,34 @@ const importFileName = ref("");
 let searchTimeout = null;
 
 const hasInstructors = computed(() => props.instructors.data?.length > 0);
+const hasActiveFilters = computed(
+    () => searchQuery.value || departmentFilterId.value
+);
 
-// Reactive search with debouncing
-watch(searchQuery, (newValue) => {
-    if (searchTimeout) {
-        clearTimeout(searchTimeout);
-    }
+const departmentFilterOptions = computed(() => [
+    { value: "", label: "All departments" },
+    ...(props.departments || []).map((d) => ({
+        value: String(d.id),
+        label: d.name,
+    })),
+]);
 
-    searchTimeout = setTimeout(() => {
-        router.get(
-            route("admin.instructors.index"),
-            { search: newValue },
-            {
-                preserveState: true,
-                preserveScroll: false,
-                replace: true,
-            }
-        );
-    }, 500);
+const applyFilters = () => {
+    router.get(route("admin.instructors.index"), {
+        search: searchQuery.value,
+        department_id: departmentFilterId.value || undefined,
+        per_page: props.filters?.per_page || 10,
+    }, {
+        preserveState: true,
+        preserveScroll: true,
+        replace: true,
+    });
+};
+
+watch(departmentFilterId, applyFilters);
+watch(searchQuery, () => {
+    if (searchTimeout) clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(applyFilters, 500);
 });
 
 const createForm = useForm({
@@ -74,7 +89,7 @@ const importForm = useForm({
 });
 
 const departmentOptions = computed(() =>
-    props.departments.map((d) => ({
+    (props.departments || []).map((d) => ({
         value: d.id,
         label: d.name,
     }))
@@ -332,14 +347,15 @@ const formatDate = (dateString) => {
             </div>
         </div>
 
-        <!-- Search Bar -->
-        <div class="mb-6 max-w-md">
-            <div class="relative">
-                <div
-                    class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none"
-                >
+        <!-- Search & Filter -->
+        <div class="mb-6 flex flex-col sm:flex-row gap-4">
+            <div class="flex-1 min-w-0">
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                    Search
+                </label>
+                <div class="relative">
                     <svg
-                        class="h-5 w-5 text-gray-400 dark:text-gray-500"
+                        class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
                         fill="none"
                         stroke="currentColor"
                         viewBox="0 0 24 24"
@@ -351,13 +367,23 @@ const formatDate = (dateString) => {
                             d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                         />
                     </svg>
+                    <input
+                        id="search"
+                        v-model="searchQuery"
+                        type="text"
+                        placeholder="Search by ID number or name..."
+                        class="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500 transition-all"
+                    />
                 </div>
-                <input
-                    id="search"
-                    v-model="searchQuery"
-                    type="text"
-                    placeholder="Search by ID number or name..."
-                    class="block w-full pl-10 pr-3 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent transition-all"
+            </div>
+            <div class="sm:w-64">
+                <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                    Filter by department
+                </label>
+                <SearchableSelect
+                    v-model="departmentFilterId"
+                    :options="departmentFilterOptions"
+                    placeholder="Filter by department..."
                 />
             </div>
         </div>
@@ -384,11 +410,13 @@ const formatDate = (dateString) => {
                 <h3
                     class="text-sm font-medium text-gray-900 dark:text-white mb-1"
                 >
-                    No instructors found
+                    {{ hasActiveFilters ? "No instructors found" : "No instructors" }}
                 </h3>
                 <p class="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    Get started by creating a new instructor or importing from a
-                    file.
+                    {{ hasActiveFilters
+                        ? "Try adjusting your search or filters."
+                        : "Get started by creating a new instructor or importing from a file."
+                    }}
                 </p>
                 <div class="flex gap-2 justify-center">
                     <button
@@ -511,7 +539,10 @@ const formatDate = (dateString) => {
                 :from="props.instructors.from || 0"
                 :to="props.instructors.to || 0"
                 route-name="admin.instructors.index"
-                :filters="{ search: props.filters?.search || '' }"
+                :filters="{
+                    search: searchQuery || props.filters?.search || '',
+                    department_id: departmentFilterId || props.filters?.department_id || '',
+                }"
             />
         </div>
 

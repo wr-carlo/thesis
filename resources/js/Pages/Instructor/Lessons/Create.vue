@@ -318,8 +318,9 @@
 
 <script setup>
 import { ref, watch, onUnmounted } from "vue";
-import { useForm, usePage } from "@inertiajs/vue3";
+import { useForm, usePage, router } from "@inertiajs/vue3";
 import InstructorLayout from "@/Layouts/InstructorLayout.vue";
+import { useLessonReviewStore } from "@/Stores/useLessonReview";
 import { useToast } from "@/Stores/useToast";
 import InputLabel from "@/Components/InputLabel.vue";
 import TextInput from "@/Components/TextInput.vue";
@@ -332,6 +333,7 @@ const props = defineProps({
 });
 
 const { success: showToast } = useToast();
+const lessonReviewStore = useLessonReviewStore();
 
 // Bloom's Taxonomy levels configuration
 const bloomLevels = [
@@ -522,11 +524,19 @@ const confirmGenerate = () => {
         ...data,
         question_distribution: summarizedDistribution.value
     })).post(route("instructor.lessons.store"), {
-        onSuccess: () => {
-            playSound('success');
+        onSuccess: (page) => {
             showProcessingModal.value = false;
-            const msg = usePage().props.flash?.success || "Assessment generated successfully! Please review before saving.";
-            showToast(msg);
+            const data = page.props.lessonReviewData;
+            const token = page.props.reviewToken;
+            if (data && token) {
+                playSound('success');
+                lessonReviewStore.save(token, data);
+                router.visit(route("instructor.lessons.review", { token }));
+            } else {
+                playSound('success');
+                const msg = page.props.flash?.success || "Assessment generated successfully! Please review before saving.";
+                showToast(msg);
+            }
         },
         onError: (errors) => {
             playSound('failed');
@@ -592,11 +602,19 @@ const retryUpload = () => {
         ...data,
         question_distribution: summarizedDistribution.value
     })).post(route("instructor.lessons.store"), {
-        onSuccess: () => {
-            playSound('success');
+        onSuccess: (page) => {
             showProcessingModal.value = false;
-            const msg = usePage().props.flash?.success || "Assessment generated successfully! Please review before saving.";
-            showToast(msg);
+            const data = page.props.lessonReviewData;
+            const token = page.props.reviewToken;
+            if (data && token) {
+                playSound('success');
+                lessonReviewStore.save(token, data);
+                router.visit(route("instructor.lessons.review", { token }));
+            } else {
+                playSound('success');
+                const msg = page.props.flash?.success || "Assessment generated successfully! Please review before saving.";
+                showToast(msg);
+            }
         },
         onError: (errors) => {
             playSound('failed');

@@ -288,9 +288,9 @@ const formatDate = (dateString) => {
             </div>
         </div>
 
-        <!-- Search & Filter -->
+        <!-- Search & Filter (same layout as ProfessorSubjects) -->
         <div class="mb-6 flex flex-col sm:flex-row gap-4">
-            <div class="flex-1 min-w-0 w-full">
+            <div class="flex-1 min-w-0">
                 <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
                     Search
                 </label>
@@ -477,8 +477,8 @@ const formatDate = (dateString) => {
                 :to="props.sections.to || 0"
                 route-name="admin.sections.index"
                 :filters="{
-                    search: props.filters?.search || '',
-                    department_id: departmentFilterId.value || props.filters?.department_id || '',
+                    search: searchQuery || props.filters?.search || '',
+                    department_id: departmentFilterId || props.filters?.department_id || '',
                 }"
             />
         </div>

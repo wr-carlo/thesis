@@ -22,6 +22,7 @@ class InstructorController extends Controller
     public function index(Request $request)
     {
         $search = $request->string('search')->toString();
+        $departmentId = $request->input('department_id');
         $perPage = min(max((int) $request->input('per_page', 10), 1), 100);
 
         $instructors = User::with(['professor.department'])
@@ -32,6 +33,9 @@ class InstructorController extends Controller
                         ->orWhere('id_number', 'like', "%{$term}%");
                 });
             })
+            ->when($departmentId, function ($query, $id) {
+                $query->whereHas('professor', fn ($q) => $q->where('department_id', $id));
+            })
             ->orderBy('name')
             ->paginate($perPage)
             ->withQueryString();
@@ -41,6 +45,7 @@ class InstructorController extends Controller
             'departments' => Department::orderBy('name')->get(),
             'filters' => [
                 'search' => $search,
+                'department_id' => $departmentId,
                 'per_page' => $perPage,
             ],
         ]);

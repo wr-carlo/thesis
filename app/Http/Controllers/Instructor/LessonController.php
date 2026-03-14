@@ -20,6 +20,7 @@ use App\Services\FileProcessing\TextCleaner;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 
@@ -392,29 +393,31 @@ class LessonController extends Controller
                 throw $e;
             }
 
-            // Store everything in session instead of database
-            session([
-                'lesson_review' => [
-                    'subject_id' => $request->subject_id,
-                    'professor_id' => $professor->id,
-                    'title' => $request->title,
-                    'file_path' => $path,
-                    'file_name' => $file->getClientOriginalName(),
-                    'file_size' => $file->getSize(),
-                    'mime_type' => $file->getMimeType(),
-                    'extracted_content' => $cleanedText,
-                    'assessment_title' => "Assessment for {$request->title}",
-                    'questions' => $parsedResponse,
-                    'ai_metadata' => [
-                        'provider_used' => $aiResult['provider_used'] ?? null,
-                        'chunks_processed' => $aiResult['chunks_processed'] ?? 1,
-                        'retry_used' => $aiResult['retry_used'] ?? false,
-                    ],
-                ]
-            ]);
+            $token = Str::random(64);
+            $lessonReviewData = [
+                'subject_id' => $request->subject_id,
+                'professor_id' => $professor->id,
+                'title' => $request->title,
+                'file_path' => $path,
+                'file_name' => $file->getClientOriginalName(),
+                'file_size' => $file->getSize(),
+                'mime_type' => $file->getMimeType(),
+                'extracted_content' => $cleanedText,
+                'assessment_title' => "Assessment for {$request->title}",
+                'questions' => $parsedResponse,
+                'ai_metadata' => [
+                    'provider_used' => $aiResult['provider_used'] ?? null,
+                    'chunks_processed' => $aiResult['chunks_processed'] ?? 1,
+                    'retry_used' => $aiResult['retry_used'] ?? false,
+                ],
+            ];
 
-            return redirect()->route('instructor.lessons.review')
-                ->with('success', 'Assessment questions generated successfully! Please review before saving.');
+            return Inertia::render('Instructor/Lessons/Create', [
+                'subjects' => $professor->subjects()->get(),
+                'lessonReviewData' => $lessonReviewData,
+                'reviewToken' => $token,
+                'success' => 'Assessment questions generated successfully! Please review before saving.',
+            ]);
         } catch (\Exception $e) {
             // Clean up uploaded file if it exists
             if (isset($path) && Storage::disk('public')->exists($path)) {
@@ -439,77 +442,28 @@ class LessonController extends Controller
 
     /**
      * Display the review page for generated assessment questions.
+     * Data is loaded client-side from Pinia/localStorage by token.
      */
-    public function review()
+    public function review(Request $request, string $token)
     {
-        $sessionData = session('lesson_review');
+        $professor = auth()->user()->professor;
 
-        if (!$sessionData) {
-            return redirect()->route('instructor.lessons.create')
-                ->withErrors(['error' => 'No lesson data found. Please upload a lesson first.']);
-        }
+        $subjects = $professor->subjects()->get()->map(function ($subject) {
+            return [
+                'id' => $subject->id,
+                'name' => $subject->name,
+                'code' => $subject->code,
+            ];
+        })->values()->all();
 
-        // Load subject information for display
-        $subject = Subject::find($sessionData['subject_id']);
-
-        // Transform questions from session format to display format
-        $items = [];
-
-        if (isset($sessionData['questions']['multiple_choice'])) {
-            foreach ($sessionData['questions']['multiple_choice'] as $question) {
-                // Ensure choices is an array, not a string
-                $choices = $question['choices'] ?? [];
-                if (is_string($choices)) {
-                    $choices = json_decode($choices, true) ?? [];
-                }
-                if (!is_array($choices)) {
-                    $choices = [];
-                }
-
-                $items[] = [
-                    'question' => $question['question'],
-                    'type' => 'multiple_choice',
-                    'choices' => $choices,
-                    'correct_answer' => $question['correct_answer'] ?? '',
-                    'bloom_level' => $question['bloom_level'] ?? null,
-                ];
-            }
-        }
-
-        if (isset($sessionData['questions']['identification'])) {
-            foreach ($sessionData['questions']['identification'] as $question) {
-                $items[] = [
-                    'question' => $question['question'],
-                    'type' => 'identification',
-                    'choices' => null,
-                    'correct_answer' => $question['correct_answer'] ?? '',
-                    'bloom_level' => $question['bloom_level'] ?? null,
-                ];
-            }
-        }
-
-        if (isset($sessionData['questions']['true_or_false'])) {
-            foreach ($sessionData['questions']['true_or_false'] as $question) {
-                $items[] = [
-                    'question' => $question['question'],
-                    'type' => 'true_or_false',
-                    'choices' => null,
-                    'correct_answer' => $question['correct_answer'] ?? '',
-                    'bloom_level' => $question['bloom_level'] ?? null,
-                ];
-            }
-        }
-
-        // Load all departments - explicitly serialize to ensure proper structure
-        $departments = Department::all()->map(function ($department) {
+        $departments = Department::orderBy('name')->get()->map(function ($department) {
             return [
                 'id' => $department->id,
                 'name' => $department->name,
             ];
         })->values()->all();
 
-        // Load sections and ensure department_id is included in the serialization
-        $sections = \App\Models\Section::with('department')->get()->map(function ($section) {
+        $sections = \App\Models\Section::with('department')->orderBy('name')->get()->map(function ($section) {
             return [
                 'id' => $section->id,
                 'name' => $section->name,
@@ -522,102 +476,83 @@ class LessonController extends Controller
         })->values()->all();
 
         return Inertia::render('Instructor/Lessons/Review', [
-            'lesson' => [
-                'title' => $sessionData['title'],
-                'subject' => $subject,
-            ],
-            'items' => $items,
+            'token' => $token,
+            'subjects' => $subjects,
             'departments' => $departments,
             'sections' => $sections,
-            'selectedSectionIds' => [], // Empty for new assessments
-            'aiMetadata' => [
-                'provider_used' => $sessionData['ai_metadata']['provider_used'] ?? null,
-                'chunks_processed' => $sessionData['ai_metadata']['chunks_processed'] ?? 1,
-            ],
         ]);
     }
 
     /**
-     * Save lesson and assessment from review session to database.
+     * Save lesson and assessment from review to database.
+     * Expects full payload in request body (from Pinia store).
      */
     public function saveFromReview(Request $request)
     {
-        $sessionData = session('lesson_review');
+        $request->validate([
+            'subject_id' => 'required|exists:subjects,id',
+            'professor_id' => 'required|exists:professors,id',
+            'title' => 'required|string|max:255',
+            'file_path' => 'required|string',
+            'extracted_content' => 'required|string',
+            'assessment_title' => 'required|string|max:255',
+            'items' => 'required|array',
+            'items.*.question' => 'required|string',
+            'items.*.type' => 'required|in:multiple_choice,identification,true_or_false',
+            'items.*.choices' => 'nullable|array',
+            'items.*.correct_answer' => 'required|string',
+            'section_ids' => 'nullable|array',
+            'section_ids.*' => 'exists:sections,id',
+            'status' => 'required|in:draft,published',
+        ]);
 
-        if (!$sessionData) {
-            return redirect()->route('instructor.lessons.create')
-                ->withErrors(['error' => 'Session expired. Please upload the lesson again.']);
+        $payload = $request->all();
+
+        // Convert items to questions format
+        $questions = [
+            'multiple_choice' => [],
+            'identification' => [],
+            'true_or_false' => [],
+        ];
+
+        foreach ($request->items as $item) {
+            $questionData = [
+                'question' => $item['question'],
+                'correct_answer' => $item['correct_answer'],
+                'bloom_level' => $item['bloom_level'] ?? null,
+            ];
+
+            if ($item['type'] === 'multiple_choice' && isset($item['choices'])) {
+                $questionData['choices'] = $item['choices'];
+                $questions['multiple_choice'][] = $questionData;
+            } elseif ($item['type'] === 'identification') {
+                $questions['identification'][] = $questionData;
+            } elseif ($item['type'] === 'true_or_false') {
+                $questions['true_or_false'][] = $questionData;
+            }
         }
 
         DB::beginTransaction();
 
         try {
-            // Validate section_ids if provided
-            if ($request->has('section_ids')) {
-                $request->validate([
-                    'section_ids' => 'nullable|array',
-                    'section_ids.*' => 'exists:sections,id',
-                ]);
-            }
-
-            // Validate questions if provided in request (from edited questions)
-            if ($request->has('items')) {
-                $request->validate([
-                    'items' => 'required|array',
-                    'items.*.question' => 'required|string',
-                    'items.*.type' => 'required|in:multiple_choice,identification,true_or_false',
-                    'items.*.choices' => 'nullable|array',
-                    'items.*.correct_answer' => 'required|string',
-                ]);
-
-                // Use edited questions from request
-                $questions = [
-                    'multiple_choice' => [],
-                    'identification' => [],
-                    'true_or_false' => [],
-                ];
-
-                foreach ($request->items as $item) {
-                    $questionData = [
-                        'question' => $item['question'],
-                        'correct_answer' => $item['correct_answer'],
-                        'bloom_level' => $item['bloom_level'] ?? null,
-                    ];
-
-                    if ($item['type'] === 'multiple_choice' && isset($item['choices'])) {
-                        $questionData['choices'] = $item['choices'];
-                        $questions['multiple_choice'][] = $questionData;
-                    } elseif ($item['type'] === 'identification') {
-                        $questions['identification'][] = $questionData;
-                    } elseif ($item['type'] === 'true_or_false') {
-                        $questions['true_or_false'][] = $questionData;
-                    }
-                }
-
-                $sessionData['questions'] = $questions;
-            }
-
-            // Create lesson record
             $lesson = Lesson::create([
-                'subject_id' => $sessionData['subject_id'],
-                'professor_id' => $sessionData['professor_id'],
-                'title' => $sessionData['title'],
-                'path' => $sessionData['file_path'],
-                'extracted_content' => $sessionData['extracted_content'],
+                'subject_id' => $payload['subject_id'],
+                'professor_id' => $payload['professor_id'],
+                'title' => $payload['title'],
+                'path' => $payload['file_path'],
+                'extracted_content' => $payload['extracted_content'],
             ]);
 
-            // Log upload (retrospective)
             Log::info('Lesson Processing: Upload Stage', [
                 'stage' => 'upload',
                 'status' => 'success',
                 'message' => 'File uploaded successfully',
                 'lesson_id' => $lesson->id,
-                'file_name' => $sessionData['file_name'] ?? null,
-                'file_size' => $sessionData['file_size'] ?? null,
-                'mime_type' => $sessionData['mime_type'] ?? null,
+                'file_name' => $payload['file_name'] ?? null,
+                'file_size' => $payload['file_size'] ?? null,
+                'mime_type' => $payload['mime_type'] ?? null,
             ]);
 
-            // Log validation (retrospective)
             Log::info('Lesson Processing: Validation Stage', [
                 'stage' => 'validation',
                 'status' => 'success',
@@ -625,31 +560,27 @@ class LessonController extends Controller
                 'lesson_id' => $lesson->id,
             ]);
 
-            // Log extraction (retrospective)
             Log::info('Lesson Processing: Extraction Stage', [
                 'stage' => 'extraction',
                 'status' => 'success',
                 'message' => 'Text extracted successfully',
                 'lesson_id' => $lesson->id,
-                'text_length' => strlen($sessionData['extracted_content']),
-                'word_count' => str_word_count($sessionData['extracted_content']),
+                'text_length' => strlen($payload['extracted_content']),
+                'word_count' => str_word_count($payload['extracted_content']),
             ]);
 
-            // Log AI generation (retrospective)
-            if (isset($sessionData['ai_metadata'])) {
+            if (isset($payload['ai_metadata'])) {
                 Log::info('Lesson Processing: AI Generation Stage', [
                     'stage' => 'ai_call',
                     'status' => 'success',
                     'message' => 'AI generation successful',
                     'lesson_id' => $lesson->id,
-                    'provider' => $sessionData['ai_metadata']['provider_used'] ?? 'unknown',
-                    'chunks_processed' => $sessionData['ai_metadata']['chunks_processed'] ?? 1,
-                    'retry_used' => $sessionData['ai_metadata']['retry_used'] ?? false,
+                    'provider' => $payload['ai_metadata']['provider_used'] ?? 'unknown',
+                    'chunks_processed' => $payload['ai_metadata']['chunks_processed'] ?? 1,
+                    'retry_used' => $payload['ai_metadata']['retry_used'] ?? false,
                 ]);
             }
 
-            // Log parsing (retrospective)
-            $questions = $sessionData['questions'];
             Log::info('Lesson Processing: Parsing Stage', [
                 'stage' => 'parsing',
                 'status' => 'success',
@@ -660,24 +591,18 @@ class LessonController extends Controller
                 'true_or_false_count' => count($questions['true_or_false'] ?? []),
             ]);
 
-            // Create assessment and items
             $assessment = $this->assessmentGenerator->generate(
                 $lesson,
-                $sessionData['questions'],
-                ['title' => $sessionData['assessment_title']]
+                $questions,
+                ['title' => $payload['assessment_title']]
             );
 
-            // Sync sections to assessment
             if ($request->has('section_ids')) {
                 $assessment->sections()->sync($request->section_ids ?? []);
             }
 
-            // Update status based on request
-            if ($request->has('status') && in_array($request->status, ['draft', 'published'])) {
-                $assessment->update(['status' => $request->status]);
-            }
+            $assessment->update(['status' => $request->status]);
 
-            // Log saving
             Log::info('Lesson Processing: Saving Stage', [
                 'stage' => 'saving',
                 'status' => 'success',
@@ -688,24 +613,19 @@ class LessonController extends Controller
                 'sections_assigned' => $assessment->sections()->count(),
             ]);
 
-            // Log the generated assessment creation
             LogModel::create([
                 'user_id' => auth()->id(),
-                'description' => "Created generated assessment for {$sessionData['title']}",
+                'description' => "Created generated assessment for {$payload['title']}",
                 'role' => 'instructor',
             ]);
 
             DB::commit();
 
-            // Clear session
-            session()->forget('lesson_review');
-
-            return redirect()->route('instructor.lessons.index')
+            return redirect()->route('instructor.lessons.index', [], 303)
                 ->with('success', 'Lesson and assessment saved successfully!');
         } catch (\Exception $e) {
             DB::rollBack();
 
-            // Log error with lesson ID if available
             $lessonId = isset($lesson) ? $lesson->id : null;
 
             Log::error('Lesson Processing: Saving Stage Failed', [
@@ -713,34 +633,29 @@ class LessonController extends Controller
                 'status' => 'failed',
                 'error' => $e->getMessage(),
                 'lesson_id' => $lessonId,
-                'lesson_title' => $sessionData['title'] ?? 'unknown',
+                'lesson_title' => $payload['title'] ?? 'unknown',
                 'exception' => $e->getTraceAsString(),
             ]);
 
             return back()->withErrors([
                 'error' => 'Failed to save lesson: ' . $e->getMessage(),
-            ]);
+            ])->setStatusCode(303);
         }
     }
 
     /**
-     * Cancel review and cleanup uploaded file and session.
+     * Cancel review and cleanup uploaded file.
+     * Expects file_path in request body.
      */
-    public function cancelReview()
+    public function cancelReview(Request $request)
     {
-        $sessionData = session('lesson_review');
+        $filePath = $request->input('file_path');
 
-        if ($sessionData && isset($sessionData['file_path'])) {
-            // Delete uploaded file
-            if (Storage::disk('public')->exists($sessionData['file_path'])) {
-                Storage::disk('public')->delete($sessionData['file_path']);
-            }
+        if ($filePath && Storage::disk('public')->exists($filePath)) {
+            Storage::disk('public')->delete($filePath);
         }
 
-        // Clear session
-        session()->forget('lesson_review');
-
-        return redirect()->route('instructor.lessons.create')
+        return redirect()->route('instructor.lessons.create', [], 303)
             ->with('flash', [
                 'type' => 'info',
                 'message' => 'Lesson upload cancelled. No changes were saved.',
